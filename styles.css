@@ -124,8 +124,17 @@ small, .hint { font-size: 0.78rem; color: var(--warning); font-style: italic; }
 .hub-stat-lbl { font-size: 0.68rem; color: rgba(255,255,255,0.45); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .hub-content { flex: 1; min-width: 0; padding: 2.25rem 2rem 6rem; background: var(--bg-base); }
-.hub-content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-.hub-content-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+.hub-content-header { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; }
+.hub-header-top { display: flex; justify-content: space-between; align-items: center; }
+.hub-content-title { font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0; }
+.hub-search { width: 100%; max-width: 380px; }
+.hub-search input { width: 100%; }
+
+.hub-tabs { display: flex; gap: 1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.5rem; overflow-x: auto; scrollbar-width: none; }
+.hub-tabs::-webkit-scrollbar { display: none; }
+.hub-tab { background: none; border: none; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); cursor: pointer; padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); transition: all 0.15s; white-space: nowrap; }
+.hub-tab:hover { color: var(--primary); }
+.hub-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
 
 .hub-empty { text-align: center; padding: 5rem 2rem; }
 .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
@@ -641,3 +650,236 @@ ul.print-list li { margin-bottom: 0.3rem; }
     }
 }
 .print-only { display: none; }
+
+/* ============================================================
+   RESPONSIVE DESIGN (Tablets & Mobile Phones)
+   ============================================================ */
+@media (max-width: 768px) {
+    /* Layout */
+    .hub-shell {
+        flex-direction: column;
+        min-height: auto;
+    }
+    
+    /* Sidebar as Mobile Header */
+    .hub-sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        padding: 1.25rem 1rem 1rem;
+        gap: 0.85rem;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .hub-brand {
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        text-align: left;
+        gap: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+    .hub-brand-icon {
+        width: 48px;
+        height: 48px;
+        padding: 4px;
+        margin-bottom: 0;
+        border-radius: 12px;
+        flex-shrink: 0;
+    }
+    .hub-brand-name {
+        font-size: 1.2rem;
+    }
+    .hub-brand-sub {
+        font-size: 0.72rem;
+    }
+    
+    .btn-hub-new {
+        padding: 0.85rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .hub-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 0;
+    }
+    .hub-stat {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.45rem 0.3rem;
+        text-align: center;
+        gap: 2px;
+    }
+    .hub-stat-num {
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+    .hub-stat-lbl {
+        font-size: 0.62rem;
+    }
+    
+    /* Hub Main Content */
+    .hub-content {
+        padding: 1.25rem 1rem 5.5rem;
+        width: 100%;
+    }
+    .hub-content-header {
+        margin-bottom: 1rem;
+    }
+    .hub-search {
+        max-width: 100%;
+    }
+    .hub-search input {
+        width: 100% !important;
+    }
+    .hub-tabs {
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    .hub-tab {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.5rem;
+    }
+    
+    /* Test Cards */
+    .tests-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .tc-header {
+        padding: 1rem 1.25rem;
+    }
+    .tc-body {
+        padding: 1rem 1.25rem;
+        gap: 0.75rem;
+    }
+    .tc-footer {
+        padding: 0.75rem 1.25rem;
+    }
+
+    /* Carátula / Cover View */
+    .cover-wrapper {
+        padding: 1rem 0.75rem;
+    }
+    .cover-card {
+        padding: 1.5rem 1.25rem;
+        border-radius: 14px;
+    }
+    .cover-alert-banner {
+        flex-direction: column;
+        text-align: center;
+        padding: 1rem;
+        gap: 0.5rem;
+    }
+    .consignas-list li {
+        font-size: 0.88rem;
+        padding: 0.65rem 0;
+    }
+    .cover-actions {
+        flex-direction: column-reverse;
+        gap: 0.75rem;
+    }
+    .cover-actions button {
+        width: 100%;
+    }
+
+    /* Wizard Forms */
+    .wizard-container {
+        padding: 1rem 0.85rem 6.5rem;
+        width: 100%;
+    }
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+    }
+    .range-inputs {
+        width: 100%;
+    }
+    .chip-group {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.4rem;
+    }
+    .chip {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        padding: 0.55rem 0.4rem;
+        font-size: 0.82rem;
+    }
+    .chip-xl {
+        padding: 0.85rem 1rem;
+        font-size: 0.95rem;
+    }
+
+    /* Stopwatch */
+    .stopwatch-container {
+        padding: 1.25rem 0.85rem;
+    }
+    .stopwatch-display {
+        font-size: 2.3rem;
+        margin: 0.75rem 0;
+    }
+    .stopwatch-controls {
+        gap: 0.4rem;
+        width: 100%;
+    }
+    .stopwatch-controls button {
+        flex: 1 1 0;
+        padding: 0.55rem 0.4rem;
+        font-size: 0.82rem;
+        min-width: 0;
+    }
+
+    /* LMC Table container */
+    .lmc-grid-wrapper {
+        width: 100%;
+        padding-bottom: 0.5rem;
+    }
+
+    /* App Footer Navigation */
+    .app-footer {
+        padding: 0.75rem 1rem;
+    }
+    .btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.88rem;
+    }
+
+    /* Report Modal */
+    .report-overlay {
+        padding: 0.5rem;
+    }
+    .report-modal {
+        max-height: 94vh;
+        border-radius: 12px;
+    }
+    .report-modal-header {
+        padding: 0.85rem 1rem;
+    }
+    .report-modal-body {
+        padding: 1rem 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chip-group {
+        grid-template-columns: 1fr;
+    }
+    .hub-stats {
+        gap: 0.35rem;
+    }
+    .hub-stat {
+        padding: 0.35rem 0.2rem;
+    }
+    .hub-stat-num {
+        font-size: 1rem;
+    }
+    .hub-stat-lbl {
+        font-size: 0.58rem;
+    }
+}

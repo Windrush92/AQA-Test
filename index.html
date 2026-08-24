@@ -34,19 +34,21 @@
             <div class="hub-stats" id="hub-stats"></div>
         </aside>
         <main class="hub-content">
-            <div class="hub-content-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 class="hub-content-title">Testeos</h2>
-                <div class="hub-search">
-                    <input type="text" id="hub-search-input" placeholder="Buscar por modelo o técnico..." style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); width: 250px;">
+            <div class="hub-content-header">
+                <div class="hub-header-top">
+                    <h2 class="hub-content-title">Testeos</h2>
+                    <button class="btn-theme" id="btn-theme-toggle" title="Modo Nocturno">🌙</button>
                 </div>
-                <button class="btn-theme" id="btn-theme-toggle" title="Modo Nocturno">🌙</button>
+                <div class="hub-search">
+                    <input type="text" id="hub-search-input" placeholder="Buscar por modelo o técnico...">
+                </div>
             </div>
             
-            <div class="hub-tabs" id="hub-tabs" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem;">
-                <button class="hub-tab active" data-tab="all" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--primary); cursor: pointer;">General</button>
-                <button class="hub-tab" data-tab="progress" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--text-muted); cursor: pointer;">En Progreso</button>
-                <button class="hub-tab" data-tab="completed" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--text-muted); cursor: pointer;">Finalizados</button>
-                <button class="hub-tab" data-tab="charts" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--text-muted); cursor: pointer;">Gráficos</button>
+            <div class="hub-tabs" id="hub-tabs">
+                <button class="hub-tab active" data-tab="all">General</button>
+                <button class="hub-tab" data-tab="progress">En Progreso</button>
+                <button class="hub-tab" data-tab="completed">Finalizados</button>
+                <button class="hub-tab" data-tab="charts">Gráficos</button>
             </div>
             
             <div id="tab-content-tests">
