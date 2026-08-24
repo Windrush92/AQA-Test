@@ -14,17 +14,106 @@ let currentHubTab = 'all';
 let currentSearchTerm = '';
 const cycleCounts = { fria: 0, gas: 0, caliente: 0 };
 
+// ======================== SUPABASE CLOUD SYNC ========================
+const SUPABASE_URL = 'https://oegmogywntxaplndapmm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JlzKH7tXvskL3qOPKbc34A_yhAGbr0u';
+let supabaseClient = null;
+
+function getSupabase() {
+    if (!supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    return supabaseClient;
+}
+
 // ======================== STORAGE HELPERS ========================
 function getAllTests() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
 function saveAllTests(tests) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tests)); }
 function getTest(id) { return getAllTests().find(t => t.id === id) || null; }
+
 function upsertTest(test) {
     const tests = getAllTests();
     const idx = tests.findIndex(t => t.id === test.id);
     if (idx >= 0) tests[idx] = test; else tests.unshift(test);
     saveAllTests(tests);
+
+    const sb = getSupabase();
+    if (sb) {
+        sb.from('tests').upsert({
+            id: test.id,
+            status: test.status,
+            created_at: test.createdAt,
+            completed_at: test.completedAt,
+            current_step: test.currentStep,
+            data: test.data,
+            updated_at: new Date().toISOString()
+        }).then(({ error }) => {
+            if (error) console.warn('Supabase upsert error:', error);
+        });
+    }
 }
-function removeTest(id) { saveAllTests(getAllTests().filter(t => t.id !== id)); }
+
+function removeTest(id) {
+    saveAllTests(getAllTests().filter(t => t.id !== id));
+    const sb = getSupabase();
+    if (sb) {
+        sb.from('tests').delete().eq('id', id).then(({ error }) => {
+            if (error) console.warn('Supabase delete error:', error);
+        });
+    }
+}
+
+async function syncTestsFromCloud() {
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+        const { data, error } = await sb
+            .from('tests')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.warn('Error fetching tests from Supabase:', error);
+            return;
+        }
+
+        if (data && Array.isArray(data)) {
+            const mapped = data.map(row => ({
+                id: row.id,
+                status: row.status,
+                createdAt: row.created_at,
+                completedAt: row.completed_at,
+                currentStep: row.current_step,
+                data: row.data || {}
+            }));
+            saveAllTests(mapped);
+            
+            const hubView = document.getElementById('view-hub');
+            if (hubView && !hubView.classList.contains('hidden')) {
+                renderHub(false);
+            }
+        }
+    } catch (e) {
+        console.warn('Cloud sync error:', e);
+    }
+}
+
+function initCloudSync() {
+    const sb = getSupabase();
+    if (sb) {
+        syncTestsFromCloud();
+        try {
+            sb.channel('realtime-tests')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tests' }, () => {
+                    syncTestsFromCloud();
+                })
+                .subscribe();
+        } catch (e) {
+            console.warn('Realtime subscription error:', e);
+        }
+    }
+}
+
 function genId() { return 'test_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
 
 // ======================== VIEW MANAGEMENT ========================
@@ -34,8 +123,9 @@ function showView(name) {
 }
 
 // ======================== HUB ========================
-function renderHub() {
+function renderHub(fetchCloud = true) {
     showView('hub');
+    if (fetchCloud) syncTestsFromCloud();
     let tests = getAllTests();
     const grid = document.getElementById('tests-grid');
     const empty = document.getElementById('hub-empty');
@@ -981,6 +1071,7 @@ function init() {
     loadDatalists();
     setupHubListeners();
     renderHub();
+    initCloudSync();
 }
 
 let performanceChartInstance = null;
