@@ -1,0 +1,25 @@
+{
+  "name": "AQA-Test — Control de Calidad",
+  "short_name": "AQA-Test",
+  "description": "App técnica de control de calidad y testeo LMC de equipos dispensadores",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "logo-aqa.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo-aqa.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

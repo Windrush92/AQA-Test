@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galería de Estilos - TechTest Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc; --text: #0f172a; --primary: #2563eb;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 3rem; }
+        h1 { text-align: center; margin-bottom: 3rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 3rem; }
+        .style-section { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+        .style-title { font-weight: 800; font-size: 1.2rem; color: #475569; text-transform: uppercase; letter-spacing: 1px; }
+        
+        button { cursor: pointer; border: none; outline: none; }
+
+        /* =======================================================
+           ESTILO 1: MATERIAL ENTERPRISE (Google Like)
+           ======================================================= */
+        .card-material {
+            background: white; border-radius: 12px; width: 100%; max-width: 400px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            overflow: hidden; position: relative; font-family: 'Inter', sans-serif;
+        }
+        .card-material:hover { box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22); }
+        .mat-header { padding: 1.5rem 1.5rem 0.5rem; }
+        .mat-title { font-size: 1.25rem; font-weight: 600; margin: 0; }
+        .mat-subtitle { font-size: 0.9rem; color: #64748b; margin-top: 0.2rem; }
+        .mat-body { padding: 0.5rem 1.5rem 1.5rem; font-size: 0.85rem; color: #475569; line-height: 1.6; }
+        .mat-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; background: #dcfce7; color: #166534; margin-bottom: 1rem; text-transform: uppercase; }
+        .mat-footer { padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.5rem; }
+        .mat-btn { padding: 0.5rem 1rem; border-radius: 4px; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; background: transparent; color: #2563eb; transition: background 0.2s; }
+        .mat-btn:hover { background: rgba(37,99,235,0.08); }
+
+        /* =======================================================
+           ESTILO 2: NEUMORPHISM (Soft UI)
+           ======================================================= */
+        .card-neu {
+            background: #e0e5ec; border-radius: 20px; width: 100%; max-width: 400px;
+            padding: 2rem; box-sizing: border-box; font-family: 'Inter', sans-serif;
+            box-shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
+        }
+        .neu-title { font-size: 1.4rem; font-weight: 700; color: #4a5568; margin: 0 0 0.5rem; }
+        .neu-text { font-size: 0.85rem; color: #718096; margin-bottom: 1.5rem; }
+        .neu-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 700; color: #38a169; margin-bottom: 1.5rem; }
+        .neu-status::before { content: ''; display: block; width: 10px; height: 10px; border-radius: 50%; background: #48bb78; box-shadow: 0 0 5px #48bb78; }
+        .neu-footer { display: flex; gap: 1rem; }
+        .neu-btn {
+            flex: 1; padding: 0.75rem; border-radius: 12px; background: #e0e5ec; color: #4a5568; font-weight: 600; font-size: 0.85rem;
+            box-shadow: 5px 5px 10px #b8c1cf, -5px -5px 10px #ffffff; transition: all 0.2s;
+        }
+        .neu-btn:hover { box-shadow: inset 5px 5px 10px #b8c1cf, inset -5px -5px 10px #ffffff; color: #2b6cb0; }
+
+        /* =======================================================
+           ESTILO 3: INDUSTRIAL / BRUTALISM
+           ======================================================= */
+        .card-brut {
+            background: #ffffff; border: 3px solid #000; width: 100%; max-width: 400px;
+            box-shadow: 8px 8px 0px #000; font-family: 'JetBrains Mono', monospace;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .card-brut:hover { transform: translate(2px, 2px); box-shadow: 6px 6px 0px #000; }
+        .brut-header { background: #facc15; border-bottom: 3px solid #000; padding: 1rem; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.9rem; }
+        .brut-body { padding: 1.5rem; }
+        .brut-title { font-size: 1.5rem; font-weight: 800; text-transform: uppercase; margin: 0 0 1rem; letter-spacing: -1px; }
+        .brut-info { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .brut-info span { background: #e2e8f0; padding: 0.3rem 0.5rem; border: 1px solid #000; display: inline-block; width: fit-content; }
+        .brut-btn { width: 100%; background: #000; color: #fff; padding: 0.8rem; font-family: inherit; font-weight: 700; text-transform: uppercase; font-size: 1rem; transition: background 0.2s; }
+        .brut-btn:hover { background: #2563eb; }
+
+        /* =======================================================
+           ESTILO 4: GLASSMORPHISM (Dark Mode)
+           ======================================================= */
+        .glass-wrapper { background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 2rem; border-radius: 20px; width: 100%; display: flex; justify-content: center; }
+        .card-glass {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+            width: 100%; max-width: 400px; padding: 1.5rem; color: #fff; font-family: 'Inter', sans-serif;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); position: relative; overflow: hidden;
+        }
+        .card-glass::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200px; height: 200px; background: rgba(56, 189, 248, 0.4); filter: blur(60px); z-index: -1; }
+        .glass-badge { position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(52, 211, 153, 0.3); }
+        .glass-title { font-size: 1.3rem; font-weight: 700; margin: 0 0 0.2rem; }
+        .glass-model { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; display: block; }
+        .glass-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; font-size: 0.8rem; color: #cbd5e1; }
+        .glass-btn { width: 100%; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 8px; font-weight: 600; transition: all 0.2s; }
+        .glass-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <h1>Galería de Estilos de Tarjetas</h1>
+    
+    <div class="grid">
+        <!-- ESTILO 1 -->
+        <div class="style-section">
+            <div class="style-title">1. Material (Minimalista)</div>
+            <div class="card-material">
+                <div class="mat-header">
+                    <div class="mat-status">Completado</div>
+                    <h3 class="mat-title">Rheem</h3>
+                    <div class="mat-subtitle">Termotanque 80L</div>
+                </div>
+                <div class="mat-body">
+                    👤 Técnico: Juan Pérez<br>
+                    📅 Testeo: 12/08/2026
+                </div>
+                <div class="mat-footer">
+                    <button class="mat-btn" style="color: #ef4444;">Borrar</button>
+                    <button class="mat-btn">Ver Informe</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ESTILO 2 -->
+        <div class="style-section">
+            <div class="style-title">2. Neumorphism (Soft UI)</div>
+            <div class="card-neu">
+                <div class="neu-status">FINALIZADO</div>
+                <h3 class="neu-title">Rheem</h3>
+                <div class="neu-text">Termotanque 80L<br><br>👤 Juan Pérez<br>📅 12/08/2026</div>
+                <div class="neu-footer">
+                    <button class="neu-btn">Ver Informe</button>
+                    <button class="neu-btn">PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ESTILO 3 -->
+        <div class="style-section">
+            <div class="style-title">3. Industrial (Brutalist)</div>
+            <div class="card-brut">
+                <div class="brut-header">
+                    <span>ESTADO: DONE</span>
+                    <span>#TEST-849</span>
+                </div>
+                <div class="brut-body">
+                    <h3 class="brut-title">Rheem<br><span style="font-size:1rem;font-weight:400;">Termotanque 80L</span></h3>
+                    <div class="brut-info">
+                        <span>TEC: Juan Pérez</span>
+                        <span>DATE: 12/08/2026</span>
+                    </div>
+                    <button class="brut-btn">VER INFORME</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ESTILO 4 -->
+        <div class="style-section">
+            <div class="style-title">4. Glassmorphism (Moderno)</div>
+            <div class="glass-wrapper">
+                <div class="card-glass">
+                    <div class="glass-badge">COMPLETADO</div>
+                    <h3 class="glass-title">Rheem</h3>
+                    <span class="glass-model">Termotanque 80L</span>
+                    <div class="glass-grid">
+                        <div>Técnico<br><strong style="color:#fff;">Juan Pérez</strong></div>
+                        <div>Fecha<br><strong style="color:#fff;">12/08/2026</strong></div>
+                    </div>
+                    <button class="glass-btn">📄 Ver Informe</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

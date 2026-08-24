@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AQA-Test — Testeo de Equipos</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AQA-Test">
+    <link rel="apple-touch-icon" href="logo-aqa.png">
+    <link rel="icon" type="image/png" href="logo-aqa.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ===================== VIEW: HUB ===================== -->
+<div id="view-hub" class="view">
+    <div class="hub-shell">
+        <aside class="hub-sidebar no-print">
+            <div class="hub-brand">
+                <div class="hub-brand-icon">
+                    <img src="logo-aqa.png" alt="AQA Logo" style="width: 100%; height: auto; object-fit: contain; border-radius: 8px;">
+                </div>
+                <div>
+                    <div class="hub-brand-name">AQA-Test</div>
+                    <div class="hub-brand-sub">Testeo Técnico de Equipos</div>
+                </div>
+            </div>
+            <button class="btn-hub-new" id="btn-new-test">＋ Nuevo Testeo</button>
+            <div class="hub-stats" id="hub-stats"></div>
+        </aside>
+        <main class="hub-content">
+            <div class="hub-content-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 class="hub-content-title">Testeos</h2>
+                <div class="hub-search">
+                    <input type="text" id="hub-search-input" placeholder="Buscar por modelo o técnico..." style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); width: 250px;">
+                </div>
+                <button class="btn-theme" id="btn-theme-toggle" title="Modo Nocturno">🌙</button>
+            </div>
+            
+            <div class="hub-tabs" id="hub-tabs" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem;">
+                <button class="hub-tab active" data-tab="all" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--primary); cursor: pointer;">General</button>
+                <button class="hub-tab" data-tab="progress" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--text-muted); cursor: pointer;">En Progreso</button>
+                <button class="hub-tab" data-tab="completed" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--text-muted); cursor: pointer;">Finalizados</button>
+                <button class="hub-tab" data-tab="charts" style="background: none; border: none; font-size: 1rem; font-weight: bold; color: var(--text-muted); cursor: pointer;">Gráficos</button>
+            </div>
+            
+            <div id="tab-content-tests">
+                <div id="hub-empty" class="hub-empty hidden">
+                    <div class="empty-icon">📋</div>
+                    <h2>Sin testeos aún</h2>
+                    <p>Comenzá tu primer testeo técnico de equipo</p>
+                    <button class="btn btn-primary btn-lg" id="btn-new-test-empty">＋ Comenzar Primer Testeo</button>
+                </div>
+                <div id="tests-grid" class="tests-grid"></div>
+            </div>
+            
+            <div id="tab-content-charts" class="hidden">
+                <div class="chart-builder card">
+                    <h3 style="margin-bottom: 1rem;">Rendimiento del Testeo</h3>
+                    <p class="hint-text mb-2">Seleccioná un testeo finalizado y la métrica que querés analizar en el gráfico.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label>Seleccionar Informe</label>
+                            <select id="chart-select-report" class="form-control">
+                                <option value="">-- Elegir Testeo --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Métrica a Graficar</label>
+                            <select id="chart-select-metric" class="form-control" disabled>
+                                <option value="">-- Elegir Métrica --</option>
+                            </select>
+                        </div>
+                        <div style="grid-column: span 2; display: flex; align-items: flex-end; gap: 0.5rem;">
+                            <button id="btn-generate-chart" class="btn btn-secondary" style="width: 100%;">Añadir al Gráfico</button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 2rem; background: var(--bg-card); padding: 1rem; border-radius: 12px; box-shadow: var(--shadow-neu-inset);">
+                        <canvas id="performanceChart" style="max-height: 350px; width: 100%;"></canvas>
+                    </div>
+                    
+                    <div style="margin-top: 1rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button id="btn-clear-chart" class="btn btn-danger">Limpiar Gráfico</button>
+                        <button id="btn-export-chart" class="btn btn-primary">Exportar Gráfico a PDF</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- ===================== MODAL: INFORME EN LÍNEA ===================== -->
+<div id="report-overlay" class="report-overlay hidden">
+    <div class="report-modal">
+        <div class="report-modal-header">
+            <h2 id="report-modal-title">Informe Técnico</h2>
+            <div class="report-modal-actions">
+                <button class="btn btn-secondary btn-sm" id="btn-report-pdf">📄 Descargar PDF</button>
+                <button class="btn-report-close" id="btn-report-close">✕</button>
+            </div>
+        </div>
+        <div class="report-modal-body" id="report-modal-body"></div>
+    </div>
+</div>
+
+<!-- ===================== VIEW: CARÁTULA ===================== -->
+<div id="view-cover" class="view hidden">
+    <div class="cover-wrapper">
+        <div class="cover-card">
+            <div class="cover-alert-banner">
+                <span class="cover-icon">⚠️</span>
+                <div>
+                    <h2>LEER ATENTAMENTE ANTES DE COMENZAR</h2>
+                    <p>Leé cada punto con atención, cada palabra fue seleccionada cuidadosamente.</p>
+                </div>
+            </div>
+            <ul class="consignas-list">
+                <li><span class="consigna-num">1</span><span>Completá el formulario <strong>en orden, sin saltar pasos</strong>. Los campos se habilitan automáticamente a medida que avancés.</span></li>
+                <li><span class="consigna-num">2</span><span>Para medir la presión de CO2, siempre utilizá un <strong>tubo lleno</strong> para obtener una lectura correcta.</span></li>
+                <li><span class="consigna-num">3</span><span>El sistema <strong>guarda automáticamente</strong> tu progreso. Podés pausar y retomar el testeo cuando quieras.</span></li>
+                <li><span class="consigna-num">4</span><span>Una vez que presiones <strong>"Finalizar Testeo"</strong>, el registro quedará archivado y <strong>no podrá modificarse</strong>.</span></li>
+                <li><span class="consigna-num">5</span><span>Registrá en <strong>Observaciones</strong> cualquier anomalía visual o de funcionamiento detectada en el proceso.</span></li>
+            </ul>
+            <div class="cover-divider"></div>
+            <label class="cover-confirm-label">
+                <input type="checkbox" id="chk-cover-leido">
+                <span>Leí y entendí todas las consignas. Estoy listo para comenzar.</span>
+            </label>
+            <div class="cover-actions">
+                <button class="btn btn-secondary" id="btn-cover-back">← Volver</button>
+                <button class="btn btn-primary btn-lg" id="btn-cover-start" disabled>Comenzar Testeo →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== VIEW: WIZARD ===================== -->
+<div id="view-wizard" class="view hidden">
+    <header class="app-header no-print">
+        <button class="btn-icon" id="btn-wizard-back" title="Volver al Menú principal">← Menú principal</button>
+        <div class="progress-area">
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="step-indicator" id="step-indicator">Paso 1 de 9</div>
+        </div>
+        <div class="test-label" id="header-test-label"></div>
+    </header>
+
+    <main class="wizard-container">
+
+        <!-- ===== PASO 1: INFORMACIÓN DE LA MÁQUINA ===== -->
+        <section class="wizard-step active" id="step-1" data-step="1">
+            <div class="step-header">
+                <h2>1. Información de la Máquina</h2>
+                <p>Los campos se habilitan en orden. Completá cada uno antes de continuar al siguiente.</p>
+            </div>
+
+            <div class="seq-section" data-seq="1" data-seq-step="1">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Técnico Evaluador <span class="req">*</span></label>
+                        <input type="text" id="tecnico" placeholder="Nombre completo">
+                    </div>
+                    <div class="input-group">
+                        <label>Fecha de Ingreso <span class="req">*</span></label>
+                        <input type="date" id="fecha-ingreso">
+                        <span class="field-error hidden" id="err-fecha-ingreso">⚠ La fecha de ingreso no puede ser posterior al testeo</span>
+                    </div>
+                    <div class="input-group">
+                        <label>Fecha de Testeo <span class="req">*</span></label>
+                        <input type="date" id="fecha-testeo">
+                    </div>
+                    <div class="input-group">
+                        <label>Marca <span class="req">*</span></label>
+                        <input type="text" id="marca" list="marcas-list" placeholder="Ej. Oasis" autocomplete="off">
+                        <datalist id="marcas-list"></datalist>
+                    </div>
+                    <div class="input-group">
+                        <label>Modelo <span class="req">*</span></label>
+                        <input type="text" id="modelo" list="modelos-list" placeholder="Ej. Kalix" autocomplete="off">
+                        <datalist id="modelos-list"></datalist>
+                    </div>
+                </div>
+            </div>
+
+            <div class="seq-section seq-locked" data-seq="2" data-seq-step="1">
+                <div class="section-title mt-2">Cañerías (Mangueras) <span class="req">*</span> — Selección múltiple</div>
+                <div class="chip-group" id="canerias-group">
+                    <button type="button" class="chip" data-value="6mm">6mm</button>
+                    <button type="button" class="chip" data-value="8mm">8mm</button>
+                    <button type="button" class="chip" data-value="1/4">1/4 pulgada</button>
+                    <button type="button" class="chip" data-value="5/16">5/16 pulgada</button>
+                </div>
+            </div>
+
+            <div class="seq-section seq-locked" data-seq="3" data-seq-step="1">
+                <div class="section-title mt-2">Funciones del Equipo <span class="req">*</span> — Selección múltiple</div>
+                <div class="chip-group" id="funciones-group">
+                    <button type="button" class="chip" data-value="Agua Natural">Agua Natural</button>
+                    <button type="button" class="chip" data-value="Agua Fría">Agua Fría</button>
+                    <button type="button" class="chip" data-value="Agua Caliente">Agua Caliente</button>
+                    <button type="button" class="chip" data-value="Agua Muy Caliente">Agua Muy Caliente</button>
+                    <button type="button" class="chip" data-value="Agua Con Gas">Agua Con Gas</button>
+                    <button type="button" class="chip" data-value="Finamente gasificada">Finamente gasificada</button>
+                </div>
+            </div>
+
+            <div class="seq-section seq-locked" data-seq="4" data-seq-step="1">
+                <div class="section-title mt-2">Rango Óptimo Informado por el Proveedor <span class="req">*</span></div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Rango Temp. Fría</label>
+                        <div class="range-inputs">
+                            <input type="number" id="temp-fria-min" placeholder="Mín">
+                            <span class="sep">–</span>
+                            <input type="number" id="temp-fria-max" placeholder="Máx">
+                            <span class="unit-suffix">ºC</span>
+                        </div>
+                    </div>
+                    <div class="input-group" id="grp-rango-caliente">
+                        <label>Rango Temp. Caliente</label>
+                        <div class="range-inputs">
+                            <input type="number" id="temp-caliente-min" placeholder="Mín">
+                            <span class="sep">–</span>
+                            <input type="number" id="temp-caliente-max" placeholder="Máx">
+                            <span class="unit-suffix">ºC</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Rango Presión Agua</label>
+                        <div class="range-inputs">
+                            <input type="number" id="presion-min" placeholder="Mín">
+                            <span class="sep">–</span>
+                            <input type="number" id="presion-max" placeholder="Máx">
+                            <span class="unit-suffix">PSI</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Rango Presión de CO2</label>
+                        <div class="range-inputs">
+                            <input type="number" id="presion-co2-min" placeholder="Mín" step="0.1">
+                            <span class="sep">–</span>
+                            <input type="number" id="presion-co2-max" placeholder="Máx" step="0.1">
+                            <span class="unit-suffix">Bar</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Rendimiento Declarado</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="rendimiento" placeholder="0">
+                            <span class="unit-suffix">L/h</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Termostato (Dial) — Rango</label>
+                        <div class="range-inputs" id="termostato-wrapper">
+                            <input type="number" id="termostato-nivel-min" placeholder="Mín">
+                            <span class="sep">–</span>
+                            <input type="number" id="termostato-nivel-max" placeholder="Máx">
+                            <span class="unit-suffix">Nivel</span>
+                        </div>
+                        <label class="checklist-item compact mt-1">
+                            <input type="checkbox" id="chk-termostato-solo-frio-caliente">
+                            <span class="checkmark"></span>
+                            <span class="text">No numérico (solo Frío/Caliente)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="seq-section seq-locked" data-seq="5" data-seq-step="1">
+                <div class="input-group mt-2">
+                    <label>Condiciones Particulares para testear <span class="opt">(opcional)</span></label>
+                    <textarea id="condiciones-particulares" rows="2" placeholder="Detalles extra a tener en cuenta..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== PASO 2: SANITIZADO ===== -->
+        <section class="wizard-step" id="step-2" data-step="2">
+            <div class="step-header">
+                <h2>2. Proceso de Sanitizado</h2>
+                <p>Todos los ítems son <strong>obligatorios</strong>. Debés tildar cada uno antes de poder avanzar.</p>
+            </div>
+
+            <div class="checklist-container">
+                <label class="checklist-item mandatory">
+                    <input type="checkbox" id="chk-peroxido">
+                    <span class="checkmark"></span>
+                    <span class="text">Peróxido de Hidrógeno 40 ml/L en carcasa vacía</span>
+                </label>
+                <label class="checklist-item mandatory">
+                    <input type="checkbox" id="chk-circuito">
+                    <span class="checkmark"></span>
+                    <span class="text">Circuito cerrado: Agua de red → Filtros → Carcasa sanitizante → Equipo</span>
+                </label>
+                <label class="checklist-item mandatory">
+                    <input type="checkbox" id="chk-encendido">
+                    <span class="checkmark"></span>
+                    <span class="text">Máquina encendida y dispensado por cada funcionalidad</span>
+                </label>
+                <div class="timer-box">
+                    <div class="timer-info">
+                        <strong>Dejar actuar 10 minutos</strong>
+                        <span id="timer-display">10:00</span>
+                    </div>
+                    <button type="button" class="btn-timer" id="btn-start-timer">Iniciar Reloj</button>
+                </div>
+                <label class="checklist-item mandatory">
+                    <input type="checkbox" id="chk-retirar">
+                    <span class="checkmark"></span>
+                    <span class="text">Retirar carcasa, reconectar filtros y purgar equipo (10 L por boca)</span>
+                </label>
+                <label class="checklist-item mandatory">
+                    <input type="checkbox" id="chk-tirita">
+                    <span class="checkmark"></span>
+                    <span class="text">Tirita reactiva de testeo rápido de presencia de peróxido OK</span>
+                </label>
+            </div>
+            <div id="step2-error" class="field-error hidden" style="margin-top:1rem">
+                ❌ Debés completar todos los ítems del sanitizado antes de continuar.
+            </div>
+        </section>
+
+        <!-- ===== PASO 3: CONDICIONES Y FUNCIONALIDADES ===== -->
+        <section class="wizard-step" id="step-3" data-step="3">
+            <div class="step-header">
+                <h2>3. Condiciones y Funcionalidades</h2>
+                <p>Mediciones de ambiente y test básico de componentes.</p>
+            </div>
+            <div class="seq-section" data-seq="1" data-seq-step="3">
+                <div class="section-title">Condiciones del Entorno</div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Temperatura Ambiente</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="temp-ambiente" placeholder="0">
+                            <span class="unit-suffix">ºC</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Temperatura Agua Entrada</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="temp-agua-entrada" placeholder="0">
+                            <span class="unit-suffix">ºC</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Presión de CO2 <small class="hint">*Con tubo lleno*</small></label>
+                        <div class="input-wrapper">
+                            <input type="number" id="presion-co2-medida" placeholder="0" step="0.1">
+                            <span class="unit-suffix">Bar</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="seq-section seq-locked" data-seq="2" data-seq-step="3">
+                <div class="checklist-container mt-1">
+                    <label class="checklist-item">
+                        <input type="checkbox" id="chk-presion-20psi">
+                        <span class="checkmark"></span>
+                        <span class="text">Presión de entrada de agua 20PSI ~</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" id="chk-ventilacion">
+                        <span class="checkmark"></span>
+                        <span class="text">Ventilación Suficiente</span>
+                    </label>
+                </div>
+                <div class="section-title mt-2">Funcionalidad del Equipo</div>
+                <div class="checklist-container">
+                    <label class="checklist-item highlight">
+                        <input type="checkbox" id="chk-tiene-tanque">
+                        <span class="checkmark"></span>
+                        <span class="text"><strong>Tiene tanque o banco de hielo</strong></span>
+                    </label>
+                </div>
+                <div class="form-grid mt-1" id="tanque-fields" style="display:none;">
+                    <div class="input-group">
+                        <label>Capacidad del Tanque / Banco</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="capacidad-tanque" placeholder="0" step="0.5">
+                            <span class="unit-suffix">L</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Tiempo Llenado Tanque / Banco</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="tiempo-llenado-tanque" placeholder="0">
+                            <span class="unit-suffix">min</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="checklist-container mt-1">
+                    <label class="checklist-item">
+                        <input type="checkbox" id="chk-dispensar">
+                        <span class="checkmark"></span>
+                        <span class="text">Dispensa correctamente cada función principal y secundaria (luces, sonido, botones, salida de agua, etc.)</span>
+                    </label>
+                    <label class="checklist-item">
+                        <input type="checkbox" id="chk-perdidas">
+                        <span class="checkmark"></span>
+                        <span class="text">Verificar pérdidas en conexiones y posibles fallas</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== PASO 4: TIEMPOS ÓPTIMOS ===== -->
+        <section class="wizard-step" id="step-4" data-step="4">
+            <div class="step-header">
+                <h2>4. Tiempos Óptimos y Carga (500ml)</h2>
+                <p>Medición de tiempos de enfriado/calentamiento y bombeo.</p>
+            </div>
+            <div class="seq-section" data-seq="1" data-seq-step="4">
+                <div class="section-title">Tiempo en alcanzar Temp. Óptima desde su instalación</div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Agua Fría</label>
+                        <div class="input-wrapper"><input type="number" id="tiempo-optimo-fria" placeholder="0"><span class="unit-suffix">min</span></div>
+                    </div>
+                    <div class="input-group" id="grp-optimo-caliente">
+                        <label>Agua Caliente</label>
+                        <div class="input-wrapper"><input type="number" id="tiempo-optimo-caliente" placeholder="0"><span class="unit-suffix">min</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label>Agua Con Gas</label>
+                        <div class="input-wrapper"><input type="number" id="tiempo-optimo-gas" placeholder="0"><span class="unit-suffix">min</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="seq-section seq-locked" data-seq="2" data-seq-step="4">
+                <div class="section-title mt-2">Tiempo de Llenado de Botella en Segundos</div>
+                <div class="alert-box info mb-1">
+                    💧 Referencia: <strong>Presión de entrada de agua 20 PSI ~</strong>
+                </div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Agua Fría (500ml)</label>
+                        <div class="input-wrapper"><input type="number" id="tiempo-500-fria" placeholder="0"><span class="unit-suffix">s</span></div>
+                    </div>
+                    <div class="input-group" id="grp-500-caliente">
+                        <label>Agua Caliente (500ml)</label>
+                        <div class="input-wrapper"><input type="number" id="tiempo-500-caliente" placeholder="0"><span class="unit-suffix">s</span></div>
+                    </div>
+                    <div class="input-group">
+                        <label>Agua Con Gas (500ml)</label>
+                        <div class="input-wrapper"><input type="number" id="tiempo-500-gas" placeholder="0"><span class="unit-suffix">s</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="wizard-step" id="step-5" data-step="5">
+            <div class="step-header">
+                <h2>5. LMC</h2>
+                <h3 style="margin-top: 0.5rem; color: var(--primary);">5.1 Agua Fría</h3>
+            </div>
+            
+            <div class="seq-section mt-2">
+                <div class="section-title">Tiempo de Extracción — Agua Fría</div>
+                <div class="stopwatch-container mb-2">
+                    <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
+                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
+                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el tiempo y habilitar la primera celda de la tabla.</li>
+                            <li>Extraer agua de forma continua y registrar la temperatura cada 0.5L.</li>
+                            <li>Prestar atención cuando la temperatura supere la indicada por el proveedor (se pondrá el valor en rojo) y detener la extracción en ese momento presionando el botón <strong>⏹ Detener</strong>.</li>
+                        </ul>
+                        <div class="alert-box info" style="margin: 0; padding: 0.5rem;">📋 Rango Proveedor: <strong id="machete-fria">--</strong> ºC</div>
+                    </div>
+                    <div class="stopwatch-display" id="sw-display-fria">00:00</div>
+                    <div class="stopwatch-controls">
+                        <button class="btn btn-primary" id="btn-sw-start-fria">▶ Iniciar</button>
+                        <button class="btn btn-danger" id="btn-sw-stop-fria">⏹ Detener</button>
+                        <button class="btn btn-secondary" id="btn-sw-reset-fria">🔄 Reiniciar</button>
+                    </div>
+                    <input type="hidden" id="extraccion-fria" value="0">
+                </div>
+            </div>
+
+            <div class="section-title mt-2">Tabla LMC — Temperatura Agua Fría (ºC)</div>
+            <p class="hint-text">Registrá la temperatura en cada extracción de 0.5L. Las celdas se habilitan en orden.</p>
+            <p class="hint-text mb-1">🟢 VERDE = dentro de rango &nbsp;|&nbsp; 🔴 ROJO = fuera de rango</p>
+            <div class="lmc-grid-wrapper scrollable-x">
+                <div class="lmc-grid">
+                    <div class="lmc-header"><div class="lmc-corner">L</div><div>0.5</div><div>1.0</div><div>1.5</div><div>2.0</div><div>2.5</div><div>3.0</div><div>3.5</div><div>4.0</div><div>4.5</div><div>5.0</div></div>
+                    <div class="lmc-row" id="lmc-fria-inputs"><div class="lmc-corner">ºC</div></div>
+                </div>
+            </div>
+            <p class="form-help mb-2 mt-1">¿Cuántos litros seguidos puedo sacar dentro del rango de temperatura informado por el proveedor?</p>
+
+            <div class="seq-section mt-2">
+                <div class="section-title">Tiempo de Recuperación — Agua Fría</div>
+                <div class="recovery-box">
+                    <label>¿Cuánto tiempo tarda el equipo en recuperarse de dispensar continuamente en el rango de temperatura informado por el proveedor?</label>
+                    <div class="input-wrapper recovery-input">
+                        <input type="number" id="recuperacion-fria" placeholder="0">
+                        <span class="unit-suffix">min</span>
+                    </div>
+                </div>
+                <div class="cycle-result-box mt-2 mb-2" id="cycle-result-fria" style="display:none; padding: 1rem; background: var(--surface-2); border-radius: 8px; border-left: 4px solid var(--primary);">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
+                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-fria">0</span> min</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="wizard-step" id="step-6" data-step="6">
+            <div class="step-header">
+                <h2>5. LMC</h2>
+                <h3 style="margin-top: 0.5rem; color: var(--primary);">5.2 Agua con Gas</h3>
+            </div>
+            
+            <div class="seq-section mt-2">
+                <div class="section-title">Tiempo de Extracción — Agua con Gas</div>
+                <div class="stopwatch-container mb-2">
+                    <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
+                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
+                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el tiempo y habilitar la primera celda de la tabla.</li>
+                            <li>Extraer agua de forma continua y registrar la temperatura cada 0.5L.</li>
+                            <li>Prestar atención cuando la temperatura supere la indicada por el proveedor (se pondrá el valor en rojo) y detener la extracción en ese momento presionando el botón <strong>⏹ Detener</strong>.</li>
+                        </ul>
+                        <div class="alert-box info" style="margin: 0; padding: 0.5rem;">📋 Rango Proveedor: <strong id="machete-gas">--</strong> ºC</div>
+                    </div>
+                    <div class="stopwatch-display" id="sw-display-gas">00:00</div>
+                    <div class="stopwatch-controls">
+                        <button class="btn btn-primary" id="btn-sw-start-gas">▶ Iniciar</button>
+                        <button class="btn btn-danger" id="btn-sw-stop-gas">⏹ Detener</button>
+                        <button class="btn btn-secondary" id="btn-sw-reset-gas">🔄 Reiniciar</button>
+                    </div>
+                    <input type="hidden" id="extraccion-gas" value="0">
+                </div>
+            </div>
+
+            <div class="section-title mt-2">Tabla LMC — Agua con Gas (ºC y Calidad)</div>
+            <p class="hint-text">Registrá la temperatura y calidad en cada extracción de 0.5L. Las celdas se habilitan en orden.</p>
+            <p class="hint-text">🟢 VERDE = dentro de rango &nbsp;|&nbsp; 🔴 ROJO = fuera de rango</p>
+            <p class="hint-text mb-1">Calidad: 🟢 = Bueno &nbsp;|&nbsp; 🟡 = Medio &nbsp;|&nbsp; 🔴 = Malo</p>
+            <div class="lmc-grid-wrapper scrollable-x">
+                <div class="lmc-grid" id="lmc-gas-grid">
+                    <div class="lmc-header"><div class="lmc-corner">L</div><div>0.5</div><div>1.0</div><div>1.5</div><div>2.0</div><div>2.5</div><div>3.0</div><div>3.5</div><div>4.0</div><div>4.5</div><div>5.0</div></div>
+                    <div class="lmc-row" id="lmc-gas-inputs"><div class="lmc-corner">ºC</div></div>
+                    <div class="lmc-row lmc-quality-row" id="lmc-gas-quality-row"><div class="lmc-corner quality-label" style="font-size:0.75rem;">Gas</div></div>
+                </div>
+            </div>
+            <p class="form-help mb-2 mt-1">¿Cuántos litros seguidos puedo sacar dentro del rango de temperatura informado por el proveedor?</p>
+
+            <div class="seq-section mt-2">
+                <div class="section-title mt-2">Tiempo de Recuperación — Agua con Gas</div>
+                <div class="recovery-box">
+                    <label>¿Cuánto tiempo tarda el equipo en recuperarse de dispensar continuamente en el rango de temperatura informado por el proveedor?</label>
+                    <div class="input-wrapper recovery-input">
+                        <input type="number" id="recuperacion-gas" placeholder="0">
+                        <span class="unit-suffix">min</span>
+                    </div>
+                </div>
+                <div class="cycle-result-box mt-2 mb-2" id="cycle-result-gas" style="display:none; padding: 1rem; background: var(--surface-2); border-radius: 8px; border-left: 4px solid var(--primary);">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
+                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-gas">0</span> min</p>
+                </div>
+
+                <div class="section-title mt-2">Calidad Global de Gasificación</div>
+                <p class="hint-text">Valoración general final (1 = pésimo — 5 = excelente)</p>
+                <div class="star-rating" data-id="gas-calidad">
+                    <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
+                </div>
+                <input type="hidden" id="gas-calidad-val" value="0">
+            </div>
+        </section>
+
+        <section class="wizard-step" id="step-7" data-step="7">
+            <div class="step-header">
+                <h2>5. LMC</h2>
+                <h3 style="margin-top: 0.5rem; color: var(--primary);">5.3 Agua Caliente</h3>
+            </div>
+            
+            <div class="seq-section mt-2">
+                <div class="section-title">Tiempo de Extracción — Agua Caliente</div>
+                <div class="stopwatch-container mb-2">
+                    <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
+                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
+                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el tiempo y habilitar la primera celda de la tabla.</li>
+                            <li>Extraer agua de forma continua y registrar la temperatura cada 0.5L.</li>
+                            <li>Prestar atención cuando la temperatura supere la indicada por el proveedor (se pondrá el valor en rojo) y detener la extracción en ese momento presionando el botón <strong>⏹ Detener</strong>.</li>
+                        </ul>
+                        <div class="alert-box info" style="margin: 0; padding: 0.5rem;">📋 Rango Proveedor: <strong id="machete-caliente">--</strong> ºC</div>
+                    </div>
+                    <div class="stopwatch-display" id="sw-display-caliente">00:00</div>
+                    <div class="stopwatch-controls">
+                        <button class="btn btn-primary" id="btn-sw-start-caliente">▶ Iniciar</button>
+                        <button class="btn btn-danger" id="btn-sw-stop-caliente">⏹ Detener</button>
+                        <button class="btn btn-secondary" id="btn-sw-reset-caliente">🔄 Reiniciar</button>
+                    </div>
+                    <input type="hidden" id="extraccion-caliente" value="0">
+                </div>
+            </div>
+
+            <div class="section-title mt-2">Tabla LMC — Temperatura Agua Caliente (ºC)</div>
+            <p class="hint-text">Registrá la temperatura en cada extracción de 0.5L. Las celdas se habilitan en orden.</p>
+            <p class="hint-text">🟢 VERDE = dentro de rango &nbsp;|&nbsp; 🔴 ROJO = fuera de rango</p>
+            <div class="alert-box warning mb-1 mt-1">⚠️ <strong>Nota:</strong> Dependiendo el equipo, si no es posible detectar el corte de la resistencia por diseño del mismo notificar al supervisor para accionar de la manera correspondiente.</div>
+            <div class="lmc-grid-wrapper scrollable-x">
+                <div class="lmc-grid">
+                    <div class="lmc-header"><div class="lmc-corner">L</div><div>0.5</div><div>1.0</div><div>1.5</div><div>2.0</div><div>2.5</div><div>3.0</div><div>3.5</div><div>4.0</div><div>4.5</div><div>5.0</div></div>
+                    <div class="lmc-row" id="lmc-caliente-inputs"><div class="lmc-corner">ºC</div></div>
+                </div>
+            </div>
+            <p class="form-help mb-2 mt-1">¿Cuántos litros seguidos puedo sacar dentro del rango de temperatura informado por el proveedor?</p>
+
+            <div class="seq-section mt-2">
+                <div class="section-title">Tiempo de Recuperación — Agua Caliente</div>
+                <div class="recovery-box">
+                    <label>¿Cuánto tiempo tarda el equipo en recuperarse de dispensar continuamente en el rango de temperatura informado por el proveedor?</label>
+                    <div class="input-wrapper recovery-input">
+                        <input type="number" id="recuperacion-caliente" placeholder="0">
+                        <span class="unit-suffix">min</span>
+                    </div>
+                </div>
+                <div class="cycle-result-box mt-2 mb-2" id="cycle-result-caliente" style="display:none; padding: 1rem; background: var(--surface-2); border-radius: 8px; border-left: 4px solid var(--primary);">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
+                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-caliente">0</span> min</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== PASO 6: OBSERVACIONES ===== -->
+        <section class="wizard-step" id="step-8" data-step="8">
+            <div class="step-header">
+                <h2>6. Observaciones y Conclusión</h2>
+                <p>Anotá cualquier detalle adicional sobre la prueba.</p>
+            </div>
+            <div class="input-group">
+                <label>Observaciones Finales <span class="opt">(opcional)</span></label>
+                <textarea id="observaciones" rows="6" placeholder="Ej: El equipo presenta un raspón en el lateral izquierdo. Se detectó ruido inusual en el compresor..."></textarea>
+            </div>
+        </section>
+
+        <!-- ===== PASO 9: CIERRE Y REPORTE ===== -->
+        <section class="wizard-step" id="step-9" data-step="9">
+            <div class="step-header">
+                <h2>9. Cierre y Reporte Final</h2>
+                <p>Definí el estado final y archivá el testeo en el Menú principal.</p>
+            </div>
+            <div class="form-grid" style="max-width: 320px">
+                <div class="input-group">
+                    <label>Fecha de Fin de Testeo</label>
+                    <input type="date" id="fecha-fin-testeo">
+                </div>
+            </div>
+            <div class="section-title mt-2">Estado Final del Equipo <span class="req">*</span></div>
+            <div class="chip-group single-select" id="estado-final-group" style="gap:1rem; margin-bottom: 2rem;">
+                <button type="button" class="chip chip-xl status-ok" data-value="Aprobado">✅ Aprobado</button>
+                <button type="button" class="chip chip-xl status-fail" data-value="Rechazado">❌ Rechazado</button>
+            </div>
+            <div class="alert-box info">
+                Al presionar <strong>Finalizar Testeo</strong>, el registro quedará archivado y <strong>no podrá modificarse</strong>.
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="app-footer no-print">
+        <button type="button" class="btn btn-secondary" id="btn-prev" disabled>← Atrás</button>
+        <div class="footer-right">
+            <button type="button" class="btn btn-primary" id="btn-next">Siguiente →</button>
+            <button type="button" class="btn btn-pdf hidden" id="btn-pdf-wizard">📄 PDF</button>
+            <button type="button" class="btn btn-finish hidden" id="btn-finish">✅ Finalizar Testeo</button>
+        </div>
+    </footer>
+</div>
+
+<!-- PRINT -->
+<div id="print-report" class="print-only"></div>
+
+<script src="app.js"></script>
+<script src="pdf-generator.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('✅ Service Worker activo y registrado'))
+            .catch(err => console.log('Service Worker error:', err));
+    });
+}
+</script>
+</body>
+</html>
