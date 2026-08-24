@@ -522,13 +522,29 @@ textarea { resize: vertical; min-height: 80px; }
 /* ====== RATING & MISC ====== */
 .star-rating {
     display: inline-flex;
-    font-size: 2rem;
-    color: var(--border-color);
+    font-size: 2.2rem;
     cursor: pointer;
-    gap: 0.25rem;
+    gap: 0.35rem;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
 }
-.star-rating span.active, .star-rating span:hover, .star-rating span:hover ~ span {
-    color: var(--warning);
+.star-rating span {
+    color: #cbd5e1;
+    transition: color 0.15s, transform 0.15s;
+    padding: 0 4px;
+    line-height: 1;
+    display: inline-block;
+}
+[data-theme="dark"] .star-rating span {
+    color: #475569;
+}
+.star-rating span.active {
+    color: #f59e0b !important;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
+}
+.star-rating span:active {
+    transform: scale(1.2);
 }
 
 /* ====== STOPWATCH ====== */

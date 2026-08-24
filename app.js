@@ -742,10 +742,12 @@ document.querySelectorAll('.chip-group').forEach(group => {
 // ======================== STAR RATING (Global) ========================
 document.querySelectorAll('.star-rating').forEach(sr => {
     sr.querySelectorAll('span').forEach(star => {
-        star.addEventListener('click', e => {
-            const val = parseInt(e.target.dataset.val);
+        star.addEventListener('click', () => {
+            const val = parseInt(star.dataset.val);
+            if (isNaN(val)) return;
             sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= val));
-            document.getElementById(sr.dataset.id + '-val').value = val;
+            const hid = document.getElementById(sr.dataset.id + '-val');
+            if (hid) hid.value = val;
             saveState();
         });
     });
