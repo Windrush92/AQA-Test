@@ -968,127 +968,133 @@ ul.print-list li { margin-bottom: 0.3rem; }
 }
 
 /* ============================================================
-   LMC HERO QUICK-ENTRY CARDS & HISTORY FEEDS
+   LMC COMPACT HERO WIDGET & HISTORY FEED
    ============================================================ */
-.lmc-quick-entry-card {
+.lmc-hero-widget-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 1.25rem 0 1.5rem 0;
+}
+
+.lmc-hero-widget {
     background: var(--bg-card);
     border: 1.5px solid var(--border);
-    border-radius: var(--radius-lg, 12px);
-    padding: 1.25rem;
-    margin: 1rem 0;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+    border-radius: 18px;
+    padding: 1.6rem 1.4rem 1.4rem 1.4rem;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     transition: all 0.2s ease;
 }
 
-.lmc-card-header {
+.lmc-widget-top {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    margin-bottom: 1.2rem;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 0.6rem;
+    margin-bottom: 1.1rem;
+    gap: 0.2rem;
 }
 
-.lmc-step-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-}
-
-.lmc-badge-label {
-    font-size: 0.88rem;
+.lmc-widget-sub {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
     color: var(--text-muted);
-    font-weight: 600;
+    text-transform: uppercase;
 }
 
-.lmc-badge-volume {
-    font-size: 1.4rem;
-    font-weight: 800;
+.lmc-widget-volume {
+    font-size: 2.3rem;
+    font-weight: 900;
     color: var(--primary);
-    background: rgba(37, 99, 235, 0.1);
-    padding: 0.25rem 0.85rem;
-    border-radius: 20px;
-    border: 1.5px solid rgba(37, 99, 235, 0.25);
-    letter-spacing: 0.5px;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    background: rgba(37, 99, 235, 0.08);
+    padding: 0.2rem 1.2rem;
+    border-radius: 30px;
+    border: 1.5px solid rgba(37, 99, 235, 0.2);
     display: inline-block;
-    min-width: 75px;
-    text-align: center;
+    min-width: 120px;
 }
 
-.lmc-stats-badge {
-    font-size: 0.88rem;
-    color: var(--text-main);
-    background: var(--input-bg);
-    padding: 0.4rem 0.85rem;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.lmc-card-body {
-    margin-bottom: 1rem;
-}
-
-.lmc-input-row {
+.lmc-widget-center {
+    width: 100%;
     display: flex;
-    gap: 1rem;
-    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 0.9rem;
 }
 
-.lmc-gas-inputs-grid {
+.lmc-temp-input-box {
+    position: relative;
     display: flex;
-    gap: 1rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 200px;
 }
 
-.lmc-hero-temp-input {
-    font-size: 1.3rem !important;
-    font-weight: 700 !important;
-    padding: 0.65rem 0.85rem !important;
-    text-align: center;
-    border-radius: 8px !important;
+.lmc-widget-temp-input {
+    font-size: 2.1rem !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    padding: 0.5rem 2.2rem 0.5rem 0.6rem !important;
+    border-radius: 12px !important;
     border: 2px solid var(--border) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-main) !important;
+    font-family: monospace, inherit !important;
+    width: 100% !important;
+    height: 60px !important;
     transition: all 0.2s ease !important;
 }
 
-.lmc-hero-temp-input:focus {
+.lmc-widget-temp-input:focus {
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+    outline: none !important;
 }
 
-.btn-lmc-add {
-    padding: 0.65rem 1.4rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    height: 48px;
-    min-width: 140px;
-}
-
-.key-hint {
-    background: rgba(255, 255, 255, 0.28);
-    color: inherit;
-    font-size: 0.72rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: monospace;
-    line-height: 1;
+.lmc-temp-unit {
+    position: absolute;
+    right: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    pointer-events: none;
 }
 
 /* Gas Quality Pill Selector */
+.lmc-widget-gas-quality {
+    width: 100%;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.lmc-quality-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+}
+
 .gas-quality-pill-selector {
     display: flex;
     gap: 0.4rem;
+    width: 100%;
 }
 
 .quality-pill {
     flex: 1;
-    padding: 0.65rem 0.5rem;
-    font-size: 0.88rem;
+    padding: 0.55rem 0.4rem;
+    font-size: 0.84rem;
     font-weight: 600;
     border: 1.5px solid var(--border);
     border-radius: 8px;
@@ -1112,22 +1118,58 @@ ul.print-list li { margin-bottom: 0.3rem; }
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
 }
 
+/* Submit Action Button */
+.lmc-widget-btn-submit {
+    width: 100%;
+    height: 48px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 0.2rem;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.key-hint {
+    background: rgba(255, 255, 255, 0.28);
+    color: inherit;
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    line-height: 1;
+}
+
 /* Feedback message */
 .lmc-feedback-msg {
     margin-top: 0.6rem;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     font-weight: 600;
     min-height: 1.25rem;
     transition: opacity 0.2s;
+    text-align: center;
 }
 .lmc-feedback-msg.in-range { color: var(--success); }
 .lmc-feedback-msg.out-range { color: var(--danger); }
 
+.lmc-widget-stats {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    text-align: center;
+}
+
 /* History Feed Section */
 .lmc-feed-section {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 1rem;
     background: var(--input-bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 0.75rem 0.9rem;
 }
 
@@ -1159,7 +1201,7 @@ ul.print-list li { margin-bottom: 0.3rem; }
     display: flex;
     gap: 0.45rem;
     flex-wrap: wrap;
-    max-height: 150px;
+    max-height: 140px;
     overflow-y: auto;
     padding: 2px 0;
 }

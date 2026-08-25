@@ -174,6 +174,7 @@ window.buildReportHTML = function(data, test) {
         <div class="print-grid">
             <div><strong>Marca:</strong> ${v('marca')}</div>
             <div><strong>Modelo:</strong> ${v('modelo')}</div>
+            ${d['numero-serie'] ? `<div><strong>Nº de Serie:</strong> ${v('numero-serie')}</div>` : ''}
             <div><strong>Fecha de Ingreso:</strong> ${v('fecha-ingreso')}</div>
             <div><strong>Cañerías:</strong> ${(d.canerias || []).join(', ') || '-'}</div>
             <div><strong>Funciones:</strong> ${(d.funciones || []).join(', ') || '-'}</div>

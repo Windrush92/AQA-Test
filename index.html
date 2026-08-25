@@ -190,6 +190,10 @@
                         <input type="text" id="modelo" list="modelos-list" placeholder="Ej. Kalix" autocomplete="off">
                         <datalist id="modelos-list"></datalist>
                     </div>
+                    <div class="input-group">
+                        <label>Número de Serie</label>
+                        <input type="text" id="numero-serie" placeholder="Ej. SN-883920" autocomplete="off">
+                    </div>
                 </div>
             </div>
 
@@ -501,39 +505,36 @@
                 </div>
             </div>
 
-            <!-- Modern Hero Quick-Entry Card: Agua Fría -->
-            <div class="lmc-quick-entry-card" id="lmc-card-fria">
-                <div class="lmc-card-header">
-                    <div class="lmc-step-badge">
-                        <span class="lmc-badge-label">Próxima Extracción</span>
-                        <span class="lmc-badge-volume" id="lmc-current-liters-fria">0.5 L</span>
+            <!-- Compact Square-ish Hero Widget: Agua Fría -->
+            <div class="lmc-hero-widget-container">
+                <div class="lmc-hero-widget" id="lmc-card-fria">
+                    <div class="lmc-widget-top">
+                        <span class="lmc-widget-sub">DISPENSANDO</span>
+                        <div class="lmc-widget-volume" id="lmc-current-liters-fria">0.5 L</div>
                     </div>
-                    <div class="lmc-stats-badge">
-                        <span>Total registrado: <strong id="lmc-total-registered-fria">0.0 L</strong> (<span id="lmc-count-fria">0</span> tomas)</span>
-                    </div>
-                </div>
 
-                <div class="lmc-card-body">
-                    <div class="lmc-input-row">
-                        <div class="input-group" style="flex:1;">
-                            <label>Temperatura en <span id="lmc-input-label-fria">0.5 L</span> <span class="req">*</span></label>
-                            <div class="input-wrapper">
-                                <input type="number" id="lmc-input-fria" class="lmc-hero-temp-input" placeholder="Ej: 8.5" step="0.1" autocomplete="off">
-                                <span class="unit-suffix">ºC</span>
-                            </div>
+                    <div class="lmc-widget-center">
+                        <div class="lmc-temp-input-box">
+                            <input type="number" id="lmc-input-fria" class="lmc-widget-temp-input" placeholder="0.0" step="0.1" autocomplete="off">
+                            <span class="lmc-temp-unit">ºC</span>
                         </div>
-                        <button type="button" class="btn btn-primary btn-lmc-add" id="btn-submit-lmc-fria" title="Guardar toma (Enter)">
-                            <span>➕ Registrar</span>
-                            <kbd class="key-hint">Enter ↵</kbd>
-                        </button>
                     </div>
+
+                    <button type="button" class="btn btn-primary lmc-widget-btn-submit" id="btn-submit-lmc-fria">
+                        <span>➕ Registrar Toma</span>
+                        <kbd class="key-hint">Enter ↵</kbd>
+                    </button>
+
                     <div id="lmc-feedback-fria" class="lmc-feedback-msg"></div>
+                    <div class="lmc-widget-stats">
+                        <span>Total acumulado: <strong id="lmc-total-registered-fria">0.0 L</strong> (<span id="lmc-count-fria">0</span> tomas)</span>
+                    </div>
                 </div>
 
                 <!-- Mini History Feed -->
                 <div class="lmc-feed-section">
                     <div class="lmc-feed-header">
-                        <span>Tomas registradas:</span>
+                        <span>Historial de tomas:</span>
                         <button type="button" class="btn-text-action" id="btn-undo-lmc-fria" style="display:none;">⌫ Deshacer última</button>
                     </div>
                     <div class="lmc-feed-chips" id="lmc-feed-fria">
@@ -590,49 +591,46 @@
                 </div>
             </div>
 
-            <!-- Modern Hero Quick-Entry Card: Agua con Gas -->
-            <div class="lmc-quick-entry-card" id="lmc-card-gas">
-                <div class="lmc-card-header">
-                    <div class="lmc-step-badge">
-                        <span class="lmc-badge-label">Próxima Extracción</span>
-                        <span class="lmc-badge-volume" id="lmc-current-liters-gas">0.5 L</span>
+            <!-- Compact Square-ish Hero Widget: Agua con Gas -->
+            <div class="lmc-hero-widget-container">
+                <div class="lmc-hero-widget" id="lmc-card-gas">
+                    <div class="lmc-widget-top">
+                        <span class="lmc-widget-sub">DISPENSANDO CON GAS</span>
+                        <div class="lmc-widget-volume" id="lmc-current-liters-gas">0.5 L</div>
                     </div>
-                    <div class="lmc-stats-badge">
+
+                    <div class="lmc-widget-center">
+                        <div class="lmc-temp-input-box">
+                            <input type="number" id="lmc-input-gas" class="lmc-widget-temp-input" placeholder="0.0" step="0.1" autocomplete="off">
+                            <span class="lmc-temp-unit">ºC</span>
+                        </div>
+                    </div>
+
+                    <!-- Calidad del Gas abajo de la temperatura -->
+                    <div class="lmc-widget-gas-quality">
+                        <label class="lmc-quality-title">Valoración de Calidad del Gas:</label>
+                        <div class="gas-quality-pill-selector" id="gas-quality-pills">
+                            <button type="button" class="quality-pill active" data-quality="Bueno">🟢 Bueno</button>
+                            <button type="button" class="quality-pill" data-quality="Medio">🟡 Medio</button>
+                            <button type="button" class="quality-pill" data-quality="Malo">🔴 Malo</button>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary lmc-widget-btn-submit" id="btn-submit-lmc-gas">
+                        <span>➕ Registrar Toma</span>
+                        <kbd class="key-hint">Enter ↵</kbd>
+                    </button>
+
+                    <div id="lmc-feedback-gas" class="lmc-feedback-msg"></div>
+                    <div class="lmc-widget-stats">
                         <span>Total con gas: <strong id="lmc-total-registered-gas">0.0 L</strong> (<span id="lmc-count-gas">0</span> tomas)</span>
                     </div>
-                </div>
-
-                <div class="lmc-card-body">
-                    <div class="lmc-gas-inputs-grid">
-                        <div class="input-group" style="flex:1; min-width: 140px;">
-                            <label>Temperatura en <span id="lmc-input-label-gas">0.5 L</span> <span class="req">*</span></label>
-                            <div class="input-wrapper">
-                                <input type="number" id="lmc-input-gas" class="lmc-hero-temp-input" placeholder="Ej: 8.5" step="0.1" autocomplete="off">
-                                <span class="unit-suffix">ºC</span>
-                            </div>
-                        </div>
-
-                        <div class="input-group" style="flex:1.4; min-width: 220px;">
-                            <label>Calidad del Gas en <span id="lmc-quality-label-gas">0.5 L</span></label>
-                            <div class="gas-quality-pill-selector" id="gas-quality-pills">
-                                <button type="button" class="quality-pill active" data-quality="Bueno">🟢 Bueno</button>
-                                <button type="button" class="quality-pill" data-quality="Medio">🟡 Medio</button>
-                                <button type="button" class="quality-pill" data-quality="Malo">🔴 Malo</button>
-                            </div>
-                        </div>
-
-                        <button type="button" class="btn btn-primary btn-lmc-add" id="btn-submit-lmc-gas" title="Guardar toma (Enter)">
-                            <span>➕ Registrar</span>
-                            <kbd class="key-hint">Enter ↵</kbd>
-                        </button>
-                    </div>
-                    <div id="lmc-feedback-gas" class="lmc-feedback-msg"></div>
                 </div>
 
                 <!-- Mini History Feed -->
                 <div class="lmc-feed-section">
                     <div class="lmc-feed-header">
-                        <span>Tomas registradas:</span>
+                        <span>Historial de tomas con gas:</span>
                         <button type="button" class="btn-text-action" id="btn-undo-lmc-gas" style="display:none;">⌫ Deshacer última</button>
                     </div>
                     <div class="lmc-feed-chips" id="lmc-feed-gas">
@@ -697,39 +695,36 @@
 
             <div class="alert-box warning mb-1 mt-1">⚠️ <strong>Nota:</strong> Dependiendo el equipo, si no es posible detectar el corte de la resistencia por diseño del mismo notificar al supervisor para accionar de la manera correspondiente.</div>
 
-            <!-- Modern Hero Quick-Entry Card: Agua Caliente -->
-            <div class="lmc-quick-entry-card" id="lmc-card-caliente">
-                <div class="lmc-card-header">
-                    <div class="lmc-step-badge">
-                        <span class="lmc-badge-label">Próxima Extracción</span>
-                        <span class="lmc-badge-volume" id="lmc-current-liters-caliente">0.5 L</span>
+            <!-- Compact Square-ish Hero Widget: Agua Caliente -->
+            <div class="lmc-hero-widget-container">
+                <div class="lmc-hero-widget" id="lmc-card-caliente">
+                    <div class="lmc-widget-top">
+                        <span class="lmc-widget-sub">DISPENSANDO CALIENTE</span>
+                        <div class="lmc-widget-volume" id="lmc-current-liters-caliente">0.5 L</div>
                     </div>
-                    <div class="lmc-stats-badge">
+
+                    <div class="lmc-widget-center">
+                        <div class="lmc-temp-input-box">
+                            <input type="number" id="lmc-input-caliente" class="lmc-widget-temp-input" placeholder="0.0" step="0.1" autocomplete="off">
+                            <span class="lmc-temp-unit">ºC</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary lmc-widget-btn-submit" id="btn-submit-lmc-caliente">
+                        <span>➕ Registrar Toma</span>
+                        <kbd class="key-hint">Enter ↵</kbd>
+                    </button>
+
+                    <div id="lmc-feedback-caliente" class="lmc-feedback-msg"></div>
+                    <div class="lmc-widget-stats">
                         <span>Total caliente: <strong id="lmc-total-registered-caliente">0.0 L</strong> (<span id="lmc-count-caliente">0</span> tomas)</span>
                     </div>
-                </div>
-
-                <div class="lmc-card-body">
-                    <div class="lmc-input-row">
-                        <div class="input-group" style="flex:1;">
-                            <label>Temperatura en <span id="lmc-input-label-caliente">0.5 L</span> <span class="req">*</span></label>
-                            <div class="input-wrapper">
-                                <input type="number" id="lmc-input-caliente" class="lmc-hero-temp-input" placeholder="Ej: 85.0" step="0.1" autocomplete="off">
-                                <span class="unit-suffix">ºC</span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-primary btn-lmc-add" id="btn-submit-lmc-caliente" title="Guardar toma (Enter)">
-                            <span>➕ Registrar</span>
-                            <kbd class="key-hint">Enter ↵</kbd>
-                        </button>
-                    </div>
-                    <div id="lmc-feedback-caliente" class="lmc-feedback-msg"></div>
                 </div>
 
                 <!-- Mini History Feed -->
                 <div class="lmc-feed-section">
                     <div class="lmc-feed-header">
-                        <span>Tomas registradas:</span>
+                        <span>Historial de tomas:</span>
                         <button type="button" class="btn-text-action" id="btn-undo-lmc-caliente" style="display:none;">⌫ Deshacer última</button>
                     </div>
                     <div class="lmc-feed-chips" id="lmc-feed-caliente">
