@@ -6,6 +6,7 @@ const TOTAL_STEPS = 9;
 const STORAGE_KEY = 'techTests_v4';
 const BRANDS_KEY = 'techBrands_v4';
 const MODELS_KEY = 'techModels_v4';
+const DELETED_KEY = 'techDeleted_v4';
 
 // ======================== STATE ========================
 let currentStep = 1;
@@ -27,11 +28,26 @@ function getSupabase() {
 }
 
 // ======================== STORAGE HELPERS ========================
+function getDeletedIds() {
+    return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]'));
+}
+function markIdDeleted(id) {
+    const ids = getDeletedIds();
+    ids.add(id);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(ids)));
+}
+
 function getAllTests() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
 function saveAllTests(tests) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tests)); }
 function getTest(id) { return getAllTests().find(t => t.id === id) || null; }
 
 function upsertTest(test) {
+    const deletedSet = getDeletedIds();
+    if (deletedSet.has(test.id)) {
+        deletedSet.delete(test.id);
+        localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(deletedSet)));
+    }
+
     const tests = getAllTests();
     const idx = tests.findIndex(t => t.id === test.id);
     if (idx >= 0) tests[idx] = test; else tests.unshift(test);
@@ -54,13 +70,18 @@ function upsertTest(test) {
 }
 
 function removeTest(id) {
+    markIdDeleted(id);
     const remaining = getAllTests().filter(t => t.id !== id);
     saveAllTests(remaining);
     renderHub(false);
+
     const sb = getSupabase();
     if (sb) {
-        sb.from('tests').delete().eq('id', id).then(({ error }) => {
-            if (error) console.warn('Supabase delete error:', error);
+        // Update status to 'deleted' and try hard delete
+        sb.from('tests').update({ status: 'deleted', updated_at: new Date().toISOString() }).eq('id', id).then(() => {
+            sb.from('tests').delete().eq('id', id).then(({ error }) => {
+                if (error) console.warn('Supabase delete error:', error);
+            });
         });
     }
 }
@@ -80,14 +101,17 @@ async function syncTestsFromCloud() {
         }
 
         if (data && Array.isArray(data)) {
-            const mapped = data.map(row => ({
-                id: row.id,
-                status: row.status,
-                createdAt: row.created_at,
-                completedAt: row.completed_at,
-                currentStep: row.current_step,
-                data: row.data || {}
-            }));
+            const deletedSet = getDeletedIds();
+            const mapped = data
+                .filter(row => row.status !== 'deleted' && !deletedSet.has(row.id))
+                .map(row => ({
+                    id: row.id,
+                    status: row.status,
+                    createdAt: row.created_at,
+                    completedAt: row.completed_at,
+                    currentStep: row.current_step,
+                    data: row.data || {}
+                }));
 
             // Only update local storage and re-render if data has actually changed
             const currentLocalStr = localStorage.getItem(STORAGE_KEY) || '[]';
