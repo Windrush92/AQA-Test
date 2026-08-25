@@ -171,6 +171,11 @@ async function syncTestsFromCloud() {
                 const hubView = document.getElementById('view-hub');
                 if (hubView && !hubView.classList.contains('hidden')) {
                     renderHub(false);
+                } else if (activeTestId) {
+                    const currentActive = mapped.find(t => t.id === activeTestId);
+                    if (currentActive) {
+                        loadState(currentActive);
+                    }
                 }
             }
         }

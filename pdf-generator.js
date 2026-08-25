@@ -209,9 +209,9 @@ window.buildReportHTML = function(data, test) {
             <div><strong>Corte Motor (Fría):</strong> ${v('tiempo-optimo-fria')} min</div>
             ${hasHotWater ? `<div><strong>Alcanzar Temp. Caliente:</strong> ${v('tiempo-optimo-caliente')} min</div>` : ''}
             ${hasGas ? `<div><strong>Corte Motor (Gas):</strong> ${v('tiempo-optimo-gas') || v('tiempo-optimo-fria')} min <small>(mismo sistema)</small></div>` : ''}
-            <div><strong>Llenado Fría 500ml:</strong> ${v('tiempo-500-fria')} seg</div>
-            ${hasHotWater ? `<div><strong>Llenado Caliente 500ml:</strong> ${v('tiempo-500-caliente')} seg</div>` : ''}
-            ${hasGas ? `<div><strong>Llenado Con Gas 500ml:</strong> ${v('tiempo-500-gas')} seg</div>` : ''}
+            <div><strong>Llenado Fría 500ml:</strong> ${v('tiempo-500-fria')} min</div>
+            ${hasHotWater ? `<div><strong>Llenado Caliente 500ml:</strong> ${v('tiempo-500-caliente')} min</div>` : ''}
+            ${hasGas ? `<div><strong>Llenado Con Gas 500ml:</strong> ${v('tiempo-500-gas')} min</div>` : ''}
         </div>
     </div>
 
