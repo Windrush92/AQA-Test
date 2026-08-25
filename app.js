@@ -27,6 +27,56 @@ function getSupabase() {
     return supabaseClient;
 }
 
+// ======================== CUSTOM DIALOGS (Alert & Confirm) ========================
+function showCustomDialog({ title = 'AQA-Test', message, type = 'alert', confirmText = 'Aceptar', cancelText = 'Cancelar', isDanger = false }) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('custom-dialog-overlay');
+        const titleEl = document.getElementById('custom-dialog-title');
+        const bodyEl = document.getElementById('custom-dialog-body');
+        const btnCancel = document.getElementById('custom-dialog-btn-cancel');
+        const btnConfirm = document.getElementById('custom-dialog-btn-confirm');
+
+        if (!overlay || !titleEl || !bodyEl || !btnConfirm || !btnCancel) {
+            if (type === 'confirm') resolve(window.confirm(message));
+            else { window.alert(message); resolve(true); }
+            return;
+        }
+
+        titleEl.textContent = title;
+        bodyEl.textContent = message;
+        
+        btnConfirm.textContent = confirmText;
+        btnConfirm.className = `btn ${isDanger ? 'btn-danger' : 'btn-primary'}`;
+        
+        if (type === 'confirm') {
+            btnCancel.textContent = cancelText;
+            btnCancel.classList.remove('hidden');
+        } else {
+            btnCancel.classList.add('hidden');
+        }
+
+        const cleanup = (result) => {
+            overlay.classList.add('hidden');
+            btnConfirm.onclick = null;
+            btnCancel.onclick = null;
+            resolve(result);
+        };
+
+        btnConfirm.onclick = () => cleanup(true);
+        btnCancel.onclick = () => cleanup(false);
+
+        overlay.classList.remove('hidden');
+    });
+}
+
+function customAlert(message, title = 'AQA-Test') {
+    return showCustomDialog({ title, message, type: 'alert' });
+}
+
+function customConfirm(message, title = 'AQA-Test', options = {}) {
+    return showCustomDialog({ title, message, type: 'confirm', ...options });
+}
+
 // ======================== STORAGE HELPERS ========================
 function getDeletedIds() {
     return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]'));
@@ -257,8 +307,13 @@ window.generatePdfForTest = function (id) {
     const test = getTest(id);
     if (test && window.generateAndPrint) window.generateAndPrint(test.data, test);
 };
-window.confirmDelete = function (id) {
-    if (confirm('¿Seguro que querés eliminar este testeo? Esta acción no se puede deshacer.')) {
+window.confirmDelete = async function (id) {
+    const ok = await customConfirm('¿Seguro que querés eliminar este testeo? Esta acción no se puede deshacer.', 'AQA-Test', {
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        isDanger: true
+    });
+    if (ok) {
         removeTest(id);
     }
 };
@@ -486,9 +541,9 @@ function validateCurrentStep() {
     return true; // Step 8 (observaciones) is optional
 }
 
-document.getElementById('btn-next').addEventListener('click', () => {
+document.getElementById('btn-next').addEventListener('click', async () => {
     if (!validateCurrentStep()) {
-        alert('Por favor, completá todos los campos obligatorios de este paso antes de continuar.');
+        await customAlert('Por favor, completá todos los campos obligatorios de este paso antes de continuar.');
         if (currentStep === 2) document.getElementById('step2-error').classList.remove('hidden');
         return;
     }
@@ -515,10 +570,17 @@ document.getElementById('btn-pdf-wizard').addEventListener('click', () => {
 });
 document.getElementById('btn-finish').addEventListener('click', finalizeTest);
 
-function finalizeTest() {
+async function finalizeTest() {
     const estadoFinal = document.querySelector('#estado-final-group .chip.active')?.dataset.value;
-    if (!estadoFinal) { alert('Seleccioná el estado final del equipo antes de finalizar.'); return; }
-    if (!confirm('¿Confirmás que querés finalizar el testeo? No podrá modificarse luego.')) return;
+    if (!estadoFinal) {
+        await customAlert('Seleccioná el estado final del equipo antes de finalizar.');
+        return;
+    }
+    const ok = await customConfirm('¿Confirmás que querés finalizar el testeo? No podrá modificarse luego.', 'AQA-Test', {
+        confirmText: 'Finalizar',
+        cancelText: 'Cancelar'
+    });
+    if (!ok) return;
 
     // Auto-set fin date if empty
     const fechaFin = document.getElementById('fecha-fin-testeo');
@@ -531,7 +593,7 @@ function finalizeTest() {
         test.completedAt = new Date().toISOString();
         upsertTest(test);
     }
-    alert('✅ ¡Testeo finalizado y archivado exitosamente!');
+    await customAlert('✅ ¡Testeo finalizado y archivado exitosamente!');
     renderHub();
 }
 
@@ -1190,7 +1252,7 @@ function setupHubListeners() {
         { bg: 'rgba(139, 92, 246, 0.5)', border: 'rgb(139, 92, 246)' }
     ];
 
-    document.getElementById('btn-generate-chart')?.addEventListener('click', () => {
+    document.getElementById('btn-generate-chart')?.addEventListener('click', async () => {
         if (!performanceChartInstance) initChart();
         
         const reportSelect = document.getElementById('chart-select-report');
@@ -1199,7 +1261,7 @@ function setupHubListeners() {
         const metric = metricSelect.value;
         
         if (!reportId || !metric) {
-            alert('Por favor, seleccioná un testeo y una métrica.');
+            await customAlert('Por favor, seleccioná un testeo y una métrica.');
             return;
         }
         
@@ -1235,9 +1297,14 @@ function setupHubListeners() {
         performanceChartInstance.update();
     });
 
-    document.getElementById('btn-clear-chart')?.addEventListener('click', () => {
+    document.getElementById('btn-clear-chart')?.addEventListener('click', async () => {
         if (!performanceChartInstance) return;
-        if(confirm('¿Seguro que querés limpiar el gráfico completo?')) {
+        const ok = await customConfirm('¿Seguro que querés limpiar el gráfico completo?', 'AQA-Test', {
+            confirmText: 'Limpiar',
+            cancelText: 'Cancelar',
+            isDanger: true
+        });
+        if (ok) {
             performanceChartInstance.data.datasets = [];
             performanceChartInstance.update();
         }

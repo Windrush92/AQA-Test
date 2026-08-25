@@ -682,6 +682,25 @@
 <!-- PRINT -->
 <div id="print-report" class="print-only"></div>
 
+<!-- ===================== CUSTOM DIALOG (Alert & Confirm) ===================== -->
+<div id="custom-dialog-overlay" class="custom-dialog-overlay hidden">
+    <div class="custom-dialog-box">
+        <div class="custom-dialog-header">
+            <div class="custom-dialog-brand">
+                <img src="logo-aqa.png" alt="AQA Logo" class="custom-dialog-logo">
+                <span class="custom-dialog-title" id="custom-dialog-title">AQA-Test</span>
+            </div>
+        </div>
+        <div class="custom-dialog-body" id="custom-dialog-body">
+            Mensaje
+        </div>
+        <div class="custom-dialog-footer" id="custom-dialog-footer">
+            <button type="button" class="btn btn-secondary" id="custom-dialog-btn-cancel">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="custom-dialog-btn-confirm">Aceptar</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 <script src="pdf-generator.js"></script>
