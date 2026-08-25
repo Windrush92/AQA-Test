@@ -367,10 +367,10 @@ function startWizard() {
     const test = getTest(activeTestId);
     if (!test) return;
 
-    // Build initial LMC grids (0.5L - 5.0L)
-    buildInitialLmc('lmc-fria-inputs', 'fria', 'fria');
-    buildInitialLmc('lmc-gas-inputs', 'gas', 'fria');
-    buildInitialLmc('lmc-caliente-inputs', 'caliente', 'caliente');
+    // Render LMC Hero Cards
+    renderLmcHero('fria');
+    renderLmcHero('gas');
+    renderLmcHero('caliente');
 
     // Reset all DOM inputs
     document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id], #view-wizard select[id]').forEach(el => {
@@ -661,7 +661,7 @@ const GATE_CHECKS = {
     '1-2': () => document.querySelectorAll('#canerias-group .chip.active').length > 0,
     '1-3': () => document.querySelectorAll('#funciones-group .chip.active').length > 0,
     '1-4': () => {
-        const req = ['temp-fria-min', 'temp-fria-max', 'presion-min', 'presion-max', 'presion-co2-min', 'presion-co2-max', 'rendimiento'];
+        const req = ['temp-fria-min', 'temp-fria-max', 'presion-min', 'presion-max', 'presion-co2-min', 'presion-co2-max', 'rendimiento', 'litros-continuos-proveedor'];
         if (hasHotWater()) req.push('temp-caliente-min', 'temp-caliente-max');
         return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
     },
@@ -707,35 +707,9 @@ const GATE_CHECKS = {
     '4-1': () => STEP4_ORDER.every(id => document.getElementById(id)?.checked),
 
     // Steps 5,6,7: LMC
-    '5-99': () => {
-        const first = (document.getElementById('lmc-fria-0')?.value || '').trim() !== '';
-        if (!first) return false;
-        const maxIdx = getDomMaxLmcIdx('fria');
-        for (let i = 0; i <= maxIdx; i++) {
-            const v = parseFloat(document.getElementById(`lmc-fria-${i}`)?.value || '');
-            if (shouldLockNext('fria', v)) return true;
-        }
-        return true;
-    },
-    '6-99': () => {
-        const first = (document.getElementById('lmc-gas-0')?.value || '').trim() !== '';
-        if (!first) return false;
-        const maxIdx = getDomMaxLmcIdx('gas');
-        for (let i = 0; i <= maxIdx; i++) {
-            const tempVal = document.getElementById(`lmc-gas-${i}`)?.value || '';
-            if (tempVal.trim() !== '') {
-                const qVal = document.getElementById(`gas-q-${i}`)?.value || '0';
-                if (qVal === '0') return false;
-            }
-        }
-        return true;
-    },
-    '7-99': () => {
-        if (!hasHotWater()) return true;
-        const first = (document.getElementById('lmc-caliente-0')?.value || '').trim() !== '';
-        if (!first) return false;
-        return true;
-    }
+    '5-99': () => getLmcEntries('fria').length > 0,
+    '6-99': () => getLmcEntries('gas').length > 0,
+    '7-99': () => !hasHotWater() || getLmcEntries('caliente').length > 0
 };
 
 function refreshSeqForStep(step) {
@@ -760,130 +734,8 @@ function refreshSeqForStep(step) {
     });
 }
 
-// ======================== DYNAMIC LMC TABLES ========================
-function getDomMaxLmcIdx(prefix) {
-    let max = -1;
-    document.querySelectorAll(`[id^="lmc-${prefix}-"]`).forEach(el => {
-        const idx = parseInt(el.id.replace(`lmc-${prefix}-`, ''), 10);
-        if (!isNaN(idx) && idx > max) max = idx;
-    });
-    return max >= 0 ? max : 9;
-}
-
-function createLmcColumn(prefix, idx) {
-    const header = document.getElementById(`lmc-${prefix}-header`);
-    const inputsRow = document.getElementById(`lmc-${prefix}-inputs`);
-    if (!header || !inputsRow) return;
-
-    // Header liter label
-    const headerCells = header.querySelectorAll('div:not(.lmc-corner)');
-    if (headerCells.length <= idx) {
-        const liter = ((idx + 1) * 0.5).toFixed(1);
-        const th = document.createElement('div');
-        th.textContent = liter;
-        header.appendChild(th);
-    }
-
-    // Input cell
-    if (!document.getElementById(`lmc-${prefix}-${idx}`)) {
-        const wrapper = document.createElement('div');
-        const inp = document.createElement('input');
-        inp.type = 'number';
-        inp.id = `lmc-${prefix}-${idx}`;
-        inp.step = '0.1';
-        inp.dataset.prefix = prefix;
-        inp.dataset.rangeType = (prefix === 'caliente') ? 'caliente' : 'fria';
-        inp.dataset.idx = idx;
-        inp.classList.add('lmc-input');
-        if (idx > 0) {
-            inp.disabled = true;
-            inp.classList.add('lmc-seq-locked');
-        }
-
-        inp.addEventListener('input', () => {
-            validateLmcCell(inp);
-            unlockNextLmc(prefix, idx);
-            refreshSeqForStep(currentStep);
-            saveState();
-        });
-
-        wrapper.appendChild(inp);
-        inputsRow.appendChild(wrapper);
-    }
-
-    // Gas Quality cell
-    if (prefix === 'gas') {
-        const qualityRow = document.getElementById('lmc-gas-quality-row');
-        if (qualityRow && !document.querySelector(`[data-gas-q-idx="${idx}"]`)) {
-            const cell = document.createElement('div');
-            cell.classList.add('lmc-quality-cell', 'lmc-seq-locked');
-            cell.setAttribute('data-gas-q-idx', idx);
-            cell.innerHTML = `
-                <select id="gas-q-${idx}" class="gas-q-select" disabled style="width: 100%; font-size: 0.8rem; border-radius: 4px; padding: 2px; text-align: center; background: transparent; border: 1px solid var(--border);">
-                    <option value="0">➖</option>
-                    <option value="Bueno">🟢 Bueno</option>
-                    <option value="Medio">🟡 Medio</option>
-                    <option value="Malo">🔴 Malo</option>
-                </select>
-            `;
-            const sel = cell.querySelector('select');
-            sel.addEventListener('change', () => {
-                refreshSeqForStep(currentStep);
-                saveState();
-            });
-            qualityRow.appendChild(cell);
-        }
-    }
-}
-
-function ensureLmcColumn(prefix, targetIdx) {
-    const currentMax = getDomMaxLmcIdx(prefix);
-    for (let i = currentMax + 1; i <= targetIdx; i++) {
-        createLmcColumn(prefix, i);
-    }
-}
-
-window.manualAddLmcColumn = function(prefix) {
-    const currentMax = getDomMaxLmcIdx(prefix);
-    const nextIdx = currentMax + 1;
-    ensureLmcColumn(prefix, nextIdx);
-
-    const prevInp = document.getElementById(`lmc-${prefix}-${currentMax}`);
-    if (prevInp && prevInp.value.trim() !== '') {
-        const prevVal = parseFloat(prevInp.value);
-        if (!shouldLockNext(prefix, prevVal)) {
-            const nextInp = document.getElementById(`lmc-${prefix}-${nextIdx}`);
-            if (nextInp) {
-                nextInp.disabled = false;
-                nextInp.classList.remove('lmc-seq-locked');
-            }
-            if (prefix === 'gas') {
-                const qCell = document.querySelector(`[data-gas-q-idx="${nextIdx}"]`);
-                if (qCell) qCell.classList.remove('lmc-seq-locked');
-                const sel = document.getElementById(`gas-q-${nextIdx}`);
-                if (sel) sel.disabled = false;
-            }
-        }
-    }
-    saveState();
-};
-
-function buildInitialLmc(containerId, prefix, rangeType) {
-    const header = document.getElementById(`lmc-${prefix}-header`);
-    const inputsRow = document.getElementById(`lmc-${prefix}-inputs`);
-    if (!header || !inputsRow) return;
-
-    header.innerHTML = '<div class="lmc-corner">L</div>';
-    inputsRow.innerHTML = '<div class="lmc-corner">ºC</div>';
-    if (prefix === 'gas') {
-        const qualityRow = document.getElementById('lmc-gas-quality-row');
-        if (qualityRow) qualityRow.innerHTML = '<div class="lmc-corner quality-label" style="font-size:0.75rem;">Gas</div>';
-    }
-
-    for (let i = 0; i < 10; i++) {
-        createLmcColumn(prefix, i);
-    }
-}
+// ======================== LMC HERO QUICK-ENTRY CONTROLLER ========================
+let currentGasQuality = 'Bueno';
 
 function shouldLockNext(prefix, val) {
     if (isNaN(val)) return false;
@@ -900,95 +752,159 @@ function shouldLockNext(prefix, val) {
     return false;
 }
 
-function unlockNextLmc(prefix, idx) {
-    const current = document.getElementById(`lmc-${prefix}-${idx}`);
-    const hasCurrent = current && current.value.trim() !== '';
-    const currentVal = hasCurrent ? parseFloat(current.value) : NaN;
+function getLmcEntries(prefix) {
+    const test = getTest(activeTestId);
+    const d = test?.data || {};
+    const entries = [];
+    let i = 0;
+    while (true) {
+        const val = d[`lmc-${prefix}-${i}`];
+        if (val === undefined || String(val).trim() === '') break;
+        const temp = parseFloat(val);
+        const quality = (prefix === 'gas') ? (d[`gas-q-${i}`] || 'Bueno') : null;
+        const inRange = !shouldLockNext(prefix, temp);
+        entries.push({ idx: i, liters: ((i + 1) * 0.5).toFixed(1), temp: temp.toFixed(1), quality, inRange });
+        i++;
+    }
+    return entries;
+}
 
-    if (hasCurrent) {
-        // Unlock corresponding gas quality cell for CURRENT index
-        if (prefix === 'gas') {
-            const qCell = document.querySelector(`[data-gas-q-idx="${idx}"]`);
-            if (qCell) qCell.classList.remove('lmc-seq-locked');
-            const sel = document.getElementById(`gas-q-${idx}`);
-            if (sel) sel.disabled = false;
-        }
+function renderLmcHero(prefix) {
+    const entries = getLmcEntries(prefix);
+    const count = entries.length;
+    const nextLiters = ((count + 1) * 0.5).toFixed(1);
+    const totalLiters = (count * 0.5).toFixed(1);
 
-        const outOfRange = shouldLockNext(prefix, currentVal);
+    // Update Badges & Labels
+    const curLitEl = document.getElementById(`lmc-current-liters-${prefix}`);
+    if (curLitEl) curLitEl.textContent = `${nextLiters} L`;
 
-        if (!outOfRange) {
-            const nextIdx = idx + 1;
-            ensureLmcColumn(prefix, nextIdx);
-            const next = document.getElementById(`lmc-${prefix}-${nextIdx}`);
-            if (next) {
-                next.disabled = false;
-                next.classList.remove('lmc-seq-locked');
-            }
-            if (prefix === 'gas') {
-                const qCell = document.querySelector(`[data-gas-q-idx="${nextIdx}"]`);
-                if (qCell) qCell.classList.remove('lmc-seq-locked');
-                const sel = document.getElementById(`gas-q-${nextIdx}`);
-                if (sel) sel.disabled = false;
-            }
+    const inputLbl = document.getElementById(`lmc-input-label-${prefix}`);
+    if (inputLbl) inputLbl.textContent = `${nextLiters} L`;
+
+    if (prefix === 'gas') {
+        const qLbl = document.getElementById('lmc-quality-label-gas');
+        if (qLbl) qLbl.textContent = `${nextLiters} L`;
+    }
+
+    const totRegEl = document.getElementById(`lmc-total-registered-${prefix}`);
+    if (totRegEl) totRegEl.textContent = `${totalLiters} L`;
+
+    const countEl = document.getElementById(`lmc-count-${prefix}`);
+    if (countEl) countEl.textContent = count;
+
+    // Render History Feed Chips
+    const feedContainer = document.getElementById(`lmc-feed-${prefix}`);
+    const btnUndo = document.getElementById(`btn-undo-lmc-${prefix}`);
+
+    if (feedContainer) {
+        if (entries.length === 0) {
+            feedContainer.innerHTML = '<span class="feed-empty">Aún no se registraron extracciones.</span>';
+            if (btnUndo) btnUndo.style.display = 'none';
         } else {
-            // Out of range: lock all subsequent cells
-            const maxIdx = getDomMaxLmcIdx(prefix);
-            for (let i = idx + 1; i <= maxIdx; i++) {
-                const inp = document.getElementById(`lmc-${prefix}-${i}`);
-                if (inp) {
-                    inp.disabled = true;
-                    inp.classList.add('lmc-seq-locked');
-                    inp.value = '';
-                    inp.style.background = '';
-                    inp.style.color = '';
-                }
-                if (prefix === 'gas') lockGasQuality(i);
-            }
-        }
-    } else {
-        const maxIdx = getDomMaxLmcIdx(prefix);
-        for (let i = idx + 1; i <= maxIdx; i++) {
-            const inp = document.getElementById(`lmc-${prefix}-${i}`);
-            if (inp) {
-                inp.disabled = true;
-                inp.classList.add('lmc-seq-locked');
-                inp.value = '';
-                inp.style.background = '';
-                inp.style.color = '';
-            }
-        }
-        if (prefix === 'gas') {
-            for (let i = idx; i <= maxIdx; i++) lockGasQuality(i);
+            if (btnUndo) btnUndo.style.display = 'inline-block';
+            feedContainer.innerHTML = entries.map(e => {
+                const qIcon = e.quality === 'Bueno' ? ' 🟢' : (e.quality === 'Medio' ? ' 🟡' : (e.quality === 'Malo' ? ' 🔴' : ''));
+                const statusCls = e.inRange ? 'in-range' : 'out-range';
+                return `<span class="lmc-feed-item ${statusCls}"><strong>${e.liters}L:</strong> ${e.temp}ºC${qIcon}</span>`;
+            }).join('');
+            feedContainer.scrollTop = feedContainer.scrollHeight;
         }
     }
+
+    updateObtainedLiters(prefix);
+    refreshSeqForStep(currentStep);
 }
 
-function lockGasQuality(idx) {
-    const cell = document.querySelector(`[data-gas-q-idx="${idx}"]`);
-    if (cell) {
-        cell.classList.add('lmc-seq-locked');
-        const sel = document.getElementById(`gas-q-${idx}`);
-        if (sel) {
-            sel.value = "0";
-            sel.disabled = true;
+function registerLmcEntry(prefix) {
+    const inp = document.getElementById(`lmc-input-${prefix}`);
+    if (!inp || inp.value.trim() === '') {
+        inp?.focus();
+        return;
+    }
+    const tempVal = parseFloat(inp.value);
+    if (isNaN(tempVal)) {
+        inp.focus();
+        return;
+    }
+
+    if (!activeTestId) return;
+    const test = getTest(activeTestId);
+    if (!test) return;
+    test.data = test.data || {};
+
+    const entries = getLmcEntries(prefix);
+    const nextIdx = entries.length;
+
+    test.data[`lmc-${prefix}-${nextIdx}`] = tempVal.toFixed(1);
+    if (prefix === 'gas') {
+        test.data[`gas-q-${nextIdx}`] = currentGasQuality;
+    }
+
+    upsertTest(test);
+
+    // Provide user feedback
+    const feedback = document.getElementById(`lmc-feedback-${prefix}`);
+    const inRange = !shouldLockNext(prefix, tempVal);
+    const literTxt = ((nextIdx + 1) * 0.5).toFixed(1);
+
+    if (feedback) {
+        if (inRange) {
+            feedback.className = 'lmc-feedback-msg in-range';
+            feedback.textContent = `✅ ${literTxt} L registrado (${tempVal.toFixed(1)} ºC) — Dentro de rango`;
+        } else {
+            feedback.className = 'lmc-feedback-msg out-range';
+            feedback.textContent = `⚠️ ${literTxt} L registrado (${tempVal.toFixed(1)} ºC) — Fuera del rango de temperatura`;
         }
+        setTimeout(() => {
+            if (feedback.textContent.includes(literTxt)) feedback.textContent = '';
+        }, 3500);
     }
+
+    inp.value = '';
+    renderLmcHero(prefix);
+    saveState();
+    inp.focus();
 }
 
-function validateLmcCell(inp) {
-    const val = parseFloat(inp.value);
-    if (isNaN(val) || inp.value === '') { inp.style.background = ''; inp.style.color = ''; return; }
-    const rt = inp.dataset.rangeType;
-    const min = parseFloat(document.getElementById(rt === 'fria' ? 'temp-fria-min' : 'temp-caliente-min')?.value);
-    const max = parseFloat(document.getElementById(rt === 'fria' ? 'temp-fria-max' : 'temp-caliente-max')?.value);
-    if (!isNaN(min) && !isNaN(max) && min < max) {
-        if (val < min || val > max) { inp.style.background = 'rgba(239,68,68,0.18)'; inp.style.color = 'var(--danger)'; }
-        else { inp.style.background = 'rgba(16,185,129,0.15)'; inp.style.color = 'var(--success)'; }
+function undoLastLmcEntry(prefix) {
+    if (!activeTestId) return;
+    const test = getTest(activeTestId);
+    if (!test || !test.data) return;
+    const entries = getLmcEntries(prefix);
+    if (entries.length === 0) return;
+
+    const lastIdx = entries.length - 1;
+    delete test.data[`lmc-${prefix}-${lastIdx}`];
+    if (prefix === 'gas') {
+        delete test.data[`gas-q-${lastIdx}`];
     }
+
+    upsertTest(test);
+
+    const feedback = document.getElementById(`lmc-feedback-${prefix}`);
+    if (feedback) {
+        feedback.className = 'lmc-feedback-msg';
+        feedback.textContent = `⌫ Se eliminó la toma de ${((lastIdx + 1) * 0.5).toFixed(1)} L`;
+        setTimeout(() => { feedback.textContent = ''; }, 3000);
+    }
+
+    renderLmcHero(prefix);
+    saveState();
+    const inp = document.getElementById(`lmc-input-${prefix}`);
+    inp?.focus();
 }
 
-function buildGasQualityRow(containerId) {
-    // Initialized within buildInitialLmc
+function updateObtainedLiters(prefix) {
+    const entries = getLmcEntries(prefix);
+    let count = 0;
+    for (let i = 0; i < entries.length; i++) {
+        count++;
+        if (!entries[i].inRange) break;
+    }
+    const liters = (count * 0.5).toFixed(1);
+    const el = document.getElementById(`lmc-obtenido-${prefix}`);
+    if (el) el.textContent = liters;
 }
 
 // ======================== STOPWATCH LOGIC ========================
@@ -1101,10 +1017,20 @@ function updateMachetes() {
     const fMax = document.getElementById('temp-fria-max')?.value || '--';
     const cMin = document.getElementById('temp-caliente-min')?.value || '--';
     const cMax = document.getElementById('temp-caliente-max')?.value || '--';
+    const lProv = document.getElementById('litros-continuos-proveedor')?.value || '--';
+
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     set('machete-fria', `${fMin} – ${fMax}`);
     set('machete-gas', `${fMin} – ${fMax}`);
     set('machete-caliente', `${cMin} – ${cMax}`);
+
+    set('machete-litros-fria', lProv);
+    set('machete-litros-gas', lProv);
+    set('machete-litros-caliente', lProv);
+
+    updateObtainedLiters('fria');
+    updateObtainedLiters('gas');
+    updateObtainedLiters('caliente');
 }
 
 // ======================== DATALISTS ========================
@@ -1171,56 +1097,10 @@ function loadState(test) {
     if (sv > 0) { const sr = document.querySelector('.star-rating[data-id="gas-calidad"]'); if (sr) sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= sv)); }
 
     // Dynamic LMC cells sequential restore
-    ['fria', 'gas', 'caliente'].forEach(prefix => {
-        let maxDataIdx = 9;
-        Object.keys(d).forEach(k => {
-            if (k.startsWith(`lmc-${prefix}-`)) {
-                const idx = parseInt(k.replace(`lmc-${prefix}-`, ''), 10);
-                if (!isNaN(idx) && d[k] !== undefined && String(d[k]).trim() !== '') {
-                    if (idx > maxDataIdx) maxDataIdx = idx;
-                }
-            }
-        });
-
-        ensureLmcColumn(prefix, maxDataIdx + 1);
-
-        for (let i = 0; i <= maxDataIdx + 1; i++) {
-            const inp = document.getElementById(`lmc-${prefix}-${i}`);
-            if (!inp) continue;
-            const val = d[`lmc-${prefix}-${i}`];
-            if (val !== undefined && String(val).trim() !== '') {
-                inp.value = val;
-                inp.disabled = false;
-                inp.classList.remove('lmc-seq-locked');
-                validateLmcCell(inp);
-                
-                const outOfRange = shouldLockNext(prefix, parseFloat(val));
-                if (!outOfRange) {
-                    const next = document.getElementById(`lmc-${prefix}-${i + 1}`);
-                    if (next) { next.disabled = false; next.classList.remove('lmc-seq-locked'); }
-                }
-
-                if (prefix === 'gas') {
-                    const qCell = document.querySelector(`[data-gas-q-idx="${i}"]`);
-                    if (qCell) {
-                        qCell.classList.remove('lmc-seq-locked');
-                        const qVal = d[`gas-q-${i}`] || '0';
-                        let finalVal = qVal;
-                        if (['1','2','3','4','5'].includes(qVal)) {
-                            if (qVal >= '4') finalVal = 'Bueno';
-                            else if (qVal === '3') finalVal = 'Medio';
-                            else finalVal = 'Malo';
-                        }
-                        const sel = document.getElementById(`gas-q-${i}`);
-                        if (sel) {
-                            sel.disabled = false;
-                            sel.value = finalVal;
-                        }
-                    }
-                }
-            }
-        }
-    });
+    // Restore LMC Hero Cards
+    renderLmcHero('fria');
+    renderLmcHero('gas');
+    renderLmcHero('caliente');
 
     // Restore stopwatches
     ['fria', 'gas', 'caliente'].forEach(prefix => {
@@ -1274,14 +1154,31 @@ function init() {
         applyTheme(newTheme);
     });
 
-    buildInitialLmc('lmc-fria-inputs', 'fria', 'fria');
-    buildInitialLmc('lmc-gas-inputs', 'gas', 'fria');
-    buildInitialLmc('lmc-caliente-inputs', 'caliente', 'caliente');
+    // Setup LMC Hero quick-entry event listeners
+    ['fria', 'gas', 'caliente'].forEach(prefix => {
+        const inp = document.getElementById(`lmc-input-${prefix}`);
+        const btn = document.getElementById(`btn-submit-lmc-${prefix}`);
+        const btnUndo = document.getElementById(`btn-undo-lmc-${prefix}`);
 
-    // Manual Add Column buttons
-    document.getElementById('btn-add-lmc-fria')?.addEventListener('click', () => manualAddLmcColumn('fria'));
-    document.getElementById('btn-add-lmc-gas')?.addEventListener('click', () => manualAddLmcColumn('gas'));
-    document.getElementById('btn-add-lmc-caliente')?.addEventListener('click', () => manualAddLmcColumn('caliente'));
+        inp?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                registerLmcEntry(prefix);
+            }
+        });
+        btn?.addEventListener('click', () => registerLmcEntry(prefix));
+        btnUndo?.addEventListener('click', () => undoLastLmcEntry(prefix));
+    });
+
+    // Gas Quality Pills
+    document.querySelectorAll('#gas-quality-pills .quality-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('#gas-quality-pills .quality-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentGasQuality = pill.dataset.quality || 'Bueno';
+            document.getElementById('lmc-input-gas')?.focus();
+        });
+    });
 
     setupTimeInputMasks();
     loadDatalists();

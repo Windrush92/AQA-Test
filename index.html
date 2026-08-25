@@ -262,6 +262,13 @@
                         </div>
                     </div>
                     <div class="input-group">
+                        <label>Litros Continuos Declarados <span class="req">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="number" id="litros-continuos-proveedor" placeholder="Ej. 12" step="0.5">
+                            <span class="unit-suffix">L</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
                         <label>Termostato (Dial) — Rango</label>
                         <div class="range-inputs" id="termostato-wrapper">
                             <input type="number" id="termostato-nivel-min" placeholder="Mín">
@@ -475,11 +482,14 @@
                 <div class="stopwatch-container mb-2">
                     <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
                         <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
-                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el tiempo y habilitar la primera celda de la tabla.</li>
-                            <li>Extraer agua de forma continua y registrar la temperatura cada 0.5L.</li>
-                            <li>Prestar atención cuando la temperatura supere la indicada por el proveedor (se pondrá el valor en rojo) y detener la extracción en ese momento presionando el botón <strong>⏹ Detener</strong>.</li>
+                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
+                            <li>Dispensar agua de forma continua de a 0.5L, ingresando la temperatura y presionando <strong>Enter</strong> en cada toma.</li>
+                            <li>Cuando la temperatura supere la indicada por el proveedor, detener la extracción presionando <strong>⏹ Detener</strong>.</li>
                         </ul>
-                        <div class="alert-box info" style="margin: 0; padding: 0.5rem;">📋 Rango Proveedor: <strong id="machete-fria">--</strong> ºC</div>
+                        <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                            <span>📋 Rango Temp: <strong id="machete-fria">--</strong> ºC</span>
+                            <span>🎯 Declarado por Proveedor: <strong id="machete-litros-fria">--</strong> L</span>
+                        </div>
                     </div>
                     <div class="stopwatch-display" id="sw-display-fria">00:00</div>
                     <div class="stopwatch-controls">
@@ -487,23 +497,50 @@
                         <button class="btn btn-danger" id="btn-sw-stop-fria">⏹ Detener</button>
                         <button class="btn btn-secondary" id="btn-sw-reset-fria">🔄 Reiniciar</button>
                     </div>
-                    <input type="hidden" id="extraccion-fria" value="0">
+                    <input type="hidden" id="extraccion-fria" value="00:00">
                 </div>
             </div>
 
-            <div class="section-title mt-2">Tabla LMC — Temperatura Agua Fría (ºC)</div>
-            <p class="hint-text">Registrá la temperatura en cada extracción de 0.5L. Las celdas se habilitan en orden.</p>
-            <p class="hint-text mb-1">🟢 VERDE = dentro de rango &nbsp;|&nbsp; 🔴 ROJO = fuera de rango</p>
-            <div class="lmc-grid-wrapper scrollable-x">
-                <div class="lmc-grid" id="lmc-fria-grid">
-                    <div class="lmc-header" id="lmc-fria-header"><div class="lmc-corner">L</div><div>0.5</div><div>1.0</div><div>1.5</div><div>2.0</div><div>2.5</div><div>3.0</div><div>3.5</div><div>4.0</div><div>4.5</div><div>5.0</div></div>
-                    <div class="lmc-row" id="lmc-fria-inputs"><div class="lmc-corner">ºC</div></div>
+            <!-- Modern Hero Quick-Entry Card: Agua Fría -->
+            <div class="lmc-quick-entry-card" id="lmc-card-fria">
+                <div class="lmc-card-header">
+                    <div class="lmc-step-badge">
+                        <span class="lmc-badge-label">Próxima Extracción</span>
+                        <span class="lmc-badge-volume" id="lmc-current-liters-fria">0.5 L</span>
+                    </div>
+                    <div class="lmc-stats-badge">
+                        <span>Total registrado: <strong id="lmc-total-registered-fria">0.0 L</strong> (<span id="lmc-count-fria">0</span> tomas)</span>
+                    </div>
+                </div>
+
+                <div class="lmc-card-body">
+                    <div class="lmc-input-row">
+                        <div class="input-group" style="flex:1;">
+                            <label>Temperatura en <span id="lmc-input-label-fria">0.5 L</span> <span class="req">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="number" id="lmc-input-fria" class="lmc-hero-temp-input" placeholder="Ej: 8.5" step="0.1" autocomplete="off">
+                                <span class="unit-suffix">ºC</span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-lmc-add" id="btn-submit-lmc-fria" title="Guardar toma (Enter)">
+                            <span>➕ Registrar</span>
+                            <kbd class="key-hint">Enter ↵</kbd>
+                        </button>
+                    </div>
+                    <div id="lmc-feedback-fria" class="lmc-feedback-msg"></div>
+                </div>
+
+                <!-- Mini History Feed -->
+                <div class="lmc-feed-section">
+                    <div class="lmc-feed-header">
+                        <span>Tomas registradas:</span>
+                        <button type="button" class="btn-text-action" id="btn-undo-lmc-fria" style="display:none;">⌫ Deshacer última</button>
+                    </div>
+                    <div class="lmc-feed-chips" id="lmc-feed-fria">
+                        <span class="feed-empty">Aún no se registraron extracciones.</span>
+                    </div>
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:0.35rem">
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-lmc-fria">+ Agregar 0.5L</button>
-            </div>
-            <p class="form-help mb-2 mt-1">¿Cuántos litros seguidos puedo sacar dentro del rango de temperatura informado por el proveedor?</p>
 
             <div class="seq-section mt-2">
                 <div class="section-title">Tiempo de Recuperación — Agua Fría</div>
@@ -532,12 +569,16 @@
                 <div class="section-title">Tiempo de Extracción — Agua con Gas</div>
                 <div class="stopwatch-container mb-2">
                     <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
-                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
-                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el tiempo y habilitar la primera celda de la tabla.</li>
-                            <li>Extraer agua de forma continua y registrar la temperatura cada 0.5L.</li>
-                            <li>Prestar atención cuando la temperatura supere la indicada por el proveedor (se pondrá el valor en rojo) y detener la extracción en ese momento presionando el botón <strong>⏹ Detener</strong>.</li>
+                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem; line-height: 1.5;">
+                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
+                            <li>Extraer agua con gas de forma continua de a 0.5L, ingresando la temperatura y seleccionando la <strong>calidad del gas</strong> en cada toma. Presionar <strong>Enter</strong> para registrar.</li>
+                            <li>Cuando el mezclador (gasatore) se quede sin agua y <strong>solo tire GAS</strong>, detener la extracción presionando el botón <strong>⏹ Detener</strong>.</li>
+                            <li>Medir el <strong>Tiempo de Recuperación</strong> (tiempo en que el equipo carga nuevamente el gasatore/mezclador por completo).</li>
                         </ul>
-                        <div class="alert-box info" style="margin: 0; padding: 0.5rem;">📋 Rango Proveedor: <strong id="machete-gas">--</strong> ºC</div>
+                        <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                            <span>📋 Rango Temp. Fría: <strong id="machete-gas">--</strong> ºC</span>
+                            <span>🎯 Declarado por Proveedor: <strong id="machete-litros-gas">--</strong> L</span>
+                        </div>
                     </div>
                     <div class="stopwatch-display" id="sw-display-gas">00:00</div>
                     <div class="stopwatch-controls">
@@ -545,30 +586,65 @@
                         <button class="btn btn-danger" id="btn-sw-stop-gas">⏹ Detener</button>
                         <button class="btn btn-secondary" id="btn-sw-reset-gas">🔄 Reiniciar</button>
                     </div>
-                    <input type="hidden" id="extraccion-gas" value="0">
+                    <input type="hidden" id="extraccion-gas" value="00:00">
                 </div>
             </div>
 
-            <div class="section-title mt-2">Tabla LMC — Agua con Gas (ºC y Calidad)</div>
-            <p class="hint-text">Registrá la temperatura y calidad en cada extracción de 0.5L. Las celdas se habilitan en orden.</p>
-            <p class="hint-text">🟢 VERDE = dentro de rango &nbsp;|&nbsp; 🔴 ROJO = fuera de rango</p>
-            <p class="hint-text mb-1">Calidad: 🟢 = Bueno &nbsp;|&nbsp; 🟡 = Medio &nbsp;|&nbsp; 🔴 = Malo</p>
-            <div class="lmc-grid-wrapper scrollable-x">
-                <div class="lmc-grid" id="lmc-gas-grid">
-                    <div class="lmc-header" id="lmc-gas-header"><div class="lmc-corner">L</div><div>0.5</div><div>1.0</div><div>1.5</div><div>2.0</div><div>2.5</div><div>3.0</div><div>3.5</div><div>4.0</div><div>4.5</div><div>5.0</div></div>
-                    <div class="lmc-row" id="lmc-gas-inputs"><div class="lmc-corner">ºC</div></div>
-                    <div class="lmc-row lmc-quality-row" id="lmc-gas-quality-row"><div class="lmc-corner quality-label" style="font-size:0.75rem;">Gas</div></div>
+            <!-- Modern Hero Quick-Entry Card: Agua con Gas -->
+            <div class="lmc-quick-entry-card" id="lmc-card-gas">
+                <div class="lmc-card-header">
+                    <div class="lmc-step-badge">
+                        <span class="lmc-badge-label">Próxima Extracción</span>
+                        <span class="lmc-badge-volume" id="lmc-current-liters-gas">0.5 L</span>
+                    </div>
+                    <div class="lmc-stats-badge">
+                        <span>Total con gas: <strong id="lmc-total-registered-gas">0.0 L</strong> (<span id="lmc-count-gas">0</span> tomas)</span>
+                    </div>
+                </div>
+
+                <div class="lmc-card-body">
+                    <div class="lmc-gas-inputs-grid">
+                        <div class="input-group" style="flex:1; min-width: 140px;">
+                            <label>Temperatura en <span id="lmc-input-label-gas">0.5 L</span> <span class="req">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="number" id="lmc-input-gas" class="lmc-hero-temp-input" placeholder="Ej: 8.5" step="0.1" autocomplete="off">
+                                <span class="unit-suffix">ºC</span>
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="flex:1.4; min-width: 220px;">
+                            <label>Calidad del Gas en <span id="lmc-quality-label-gas">0.5 L</span></label>
+                            <div class="gas-quality-pill-selector" id="gas-quality-pills">
+                                <button type="button" class="quality-pill active" data-quality="Bueno">🟢 Bueno</button>
+                                <button type="button" class="quality-pill" data-quality="Medio">🟡 Medio</button>
+                                <button type="button" class="quality-pill" data-quality="Malo">🔴 Malo</button>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary btn-lmc-add" id="btn-submit-lmc-gas" title="Guardar toma (Enter)">
+                            <span>➕ Registrar</span>
+                            <kbd class="key-hint">Enter ↵</kbd>
+                        </button>
+                    </div>
+                    <div id="lmc-feedback-gas" class="lmc-feedback-msg"></div>
+                </div>
+
+                <!-- Mini History Feed -->
+                <div class="lmc-feed-section">
+                    <div class="lmc-feed-header">
+                        <span>Tomas registradas:</span>
+                        <button type="button" class="btn-text-action" id="btn-undo-lmc-gas" style="display:none;">⌫ Deshacer última</button>
+                    </div>
+                    <div class="lmc-feed-chips" id="lmc-feed-gas">
+                        <span class="feed-empty">Aún no se registraron extracciones.</span>
+                    </div>
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:0.35rem">
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-lmc-gas">+ Agregar 0.5L</button>
-            </div>
-            <p class="form-help mb-2 mt-1">¿Cuántos litros seguidos puedo sacar dentro del rango de temperatura informado por el proveedor?</p>
 
             <div class="seq-section mt-2">
-                <div class="section-title mt-2">Tiempo de Recuperación — Agua con Gas</div>
+                <div class="section-title mt-2">Tiempo de Recuperación — Carga del Gasatore (Mezclador)</div>
                 <div class="recovery-box">
-                    <label>¿Cuánto tiempo tarda el equipo en recuperarse de dispensar continuamente en el rango de temperatura informado por el proveedor?</label>
+                    <label>¿Cuánto tiempo tarda el equipo en cargar nuevamente el gasatore (mezclador) por completo tras la extracción continua?</label>
                     <div class="input-wrapper recovery-input">
                         <input type="text" id="recuperacion-gas" placeholder="mm:ss" maxlength="5" class="time-input">
                         <span class="unit-suffix">min</span>
@@ -600,11 +676,14 @@
                 <div class="stopwatch-container mb-2">
                     <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
                         <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
-                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el tiempo y habilitar la primera celda de la tabla.</li>
-                            <li>Extraer agua de forma continua y registrar la temperatura cada 0.5L.</li>
-                            <li>Prestar atención cuando la temperatura supere la indicada por el proveedor (se pondrá el valor en rojo) y detener la extracción en ese momento presionando el botón <strong>⏹ Detener</strong>.</li>
+                            <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
+                            <li>Dispensar agua de forma continua de a 0.5L, ingresando la temperatura y presionando <strong>Enter</strong> en cada toma.</li>
+                            <li>Cuando la temperatura descienda por debajo de la indicada por el proveedor, detener la extracción presionando <strong>⏹ Detener</strong>.</li>
                         </ul>
-                        <div class="alert-box info" style="margin: 0; padding: 0.5rem;">📋 Rango Proveedor: <strong id="machete-caliente">--</strong> ºC</div>
+                        <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                            <span>📋 Rango Temp: <strong id="machete-caliente">--</strong> ºC</span>
+                            <span>🎯 Declarado por Proveedor: <strong id="machete-litros-caliente">--</strong> L</span>
+                        </div>
                     </div>
                     <div class="stopwatch-display" id="sw-display-caliente">00:00</div>
                     <div class="stopwatch-controls">
@@ -612,24 +691,52 @@
                         <button class="btn btn-danger" id="btn-sw-stop-caliente">⏹ Detener</button>
                         <button class="btn btn-secondary" id="btn-sw-reset-caliente">🔄 Reiniciar</button>
                     </div>
-                    <input type="hidden" id="extraccion-caliente" value="0">
+                    <input type="hidden" id="extraccion-caliente" value="00:00">
                 </div>
             </div>
 
-            <div class="section-title mt-2">Tabla LMC — Temperatura Agua Caliente (ºC)</div>
-            <p class="hint-text">Registrá la temperatura en cada extracción de 0.5L. Las celdas se habilitan en orden.</p>
-            <p class="hint-text">🟢 VERDE = dentro de rango &nbsp;|&nbsp; 🔴 ROJO = fuera de rango</p>
             <div class="alert-box warning mb-1 mt-1">⚠️ <strong>Nota:</strong> Dependiendo el equipo, si no es posible detectar el corte de la resistencia por diseño del mismo notificar al supervisor para accionar de la manera correspondiente.</div>
-            <div class="lmc-grid-wrapper scrollable-x">
-                <div class="lmc-grid" id="lmc-caliente-grid">
-                    <div class="lmc-header" id="lmc-caliente-header"><div class="lmc-corner">L</div><div>0.5</div><div>1.0</div><div>1.5</div><div>2.0</div><div>2.5</div><div>3.0</div><div>3.5</div><div>4.0</div><div>4.5</div><div>5.0</div></div>
-                    <div class="lmc-row" id="lmc-caliente-inputs"><div class="lmc-corner">ºC</div></div>
+
+            <!-- Modern Hero Quick-Entry Card: Agua Caliente -->
+            <div class="lmc-quick-entry-card" id="lmc-card-caliente">
+                <div class="lmc-card-header">
+                    <div class="lmc-step-badge">
+                        <span class="lmc-badge-label">Próxima Extracción</span>
+                        <span class="lmc-badge-volume" id="lmc-current-liters-caliente">0.5 L</span>
+                    </div>
+                    <div class="lmc-stats-badge">
+                        <span>Total caliente: <strong id="lmc-total-registered-caliente">0.0 L</strong> (<span id="lmc-count-caliente">0</span> tomas)</span>
+                    </div>
+                </div>
+
+                <div class="lmc-card-body">
+                    <div class="lmc-input-row">
+                        <div class="input-group" style="flex:1;">
+                            <label>Temperatura en <span id="lmc-input-label-caliente">0.5 L</span> <span class="req">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="number" id="lmc-input-caliente" class="lmc-hero-temp-input" placeholder="Ej: 85.0" step="0.1" autocomplete="off">
+                                <span class="unit-suffix">ºC</span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-lmc-add" id="btn-submit-lmc-caliente" title="Guardar toma (Enter)">
+                            <span>➕ Registrar</span>
+                            <kbd class="key-hint">Enter ↵</kbd>
+                        </button>
+                    </div>
+                    <div id="lmc-feedback-caliente" class="lmc-feedback-msg"></div>
+                </div>
+
+                <!-- Mini History Feed -->
+                <div class="lmc-feed-section">
+                    <div class="lmc-feed-header">
+                        <span>Tomas registradas:</span>
+                        <button type="button" class="btn-text-action" id="btn-undo-lmc-caliente" style="display:none;">⌫ Deshacer última</button>
+                    </div>
+                    <div class="lmc-feed-chips" id="lmc-feed-caliente">
+                        <span class="feed-empty">Aún no se registraron extracciones.</span>
+                    </div>
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:0.35rem">
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-lmc-caliente">+ Agregar 0.5L</button>
-            </div>
-            <p class="form-help mb-2 mt-1">¿Cuántos litros seguidos puedo sacar dentro del rango de temperatura informado por el proveedor?</p>
 
             <div class="seq-section mt-2">
                 <div class="section-title">Tiempo de Recuperación — Agua Caliente</div>

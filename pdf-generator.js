@@ -51,45 +51,67 @@ window.buildReportHTML = function(data, test) {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // === Dynamic LMC Header and Steps ===
-    let maxTestedIdx = 9; // At least 0.5L to 5.0L (10 cols)
-    ['fria', 'gas', 'caliente'].forEach(prefix => {
+    // === Dynamic LMC Header and Tables ===
+    function renderLmcTables(prefix, label, showQuality = false) {
+        let maxIdx = -1;
         Object.keys(d).forEach(k => {
             if (k.startsWith(`lmc-${prefix}-`)) {
                 const idx = parseInt(k.replace(`lmc-${prefix}-`, ''), 10);
                 if (!isNaN(idx) && d[k] !== undefined && String(d[k]).trim() !== '') {
-                    if (idx > maxTestedIdx) maxTestedIdx = idx;
+                    if (idx > maxIdx) maxIdx = idx;
                 }
             }
         });
-    });
 
-    const LMC_STEPS = Array.from({ length: maxTestedIdx + 1 }, (_, i) => ((i + 1) * 0.5).toFixed(1));
-    const lmcHeader = `<tr><th style="min-width:38px">L</th>${LMC_STEPS.map(l => `<th>${l}</th>`).join('')}</tr>`;
+        if (maxIdx < 9) maxIdx = 9; // Show at least up to 5.0L
+        const totalCols = maxIdx + 1;
+        const CHUNK_SIZE = 10;
+        const chunks = [];
+        for (let c = 0; c < totalCols; c += CHUNK_SIZE) {
+            chunks.push({ start: c, end: Math.min(c + CHUNK_SIZE, totalCols) });
+        }
 
-    // === LMC row builder ===
-    function lmcRow(prefix, label) {
-        const cells = LMC_STEPS.map((_, i) => {
-            const val = d[`lmc-${prefix}-${i}`] || '-';
-            return `<td>${val}</td>`;
-        }).join('');
-        return `<tr><td><strong>${label}</strong></td>${cells}</tr>`;
-    }
-
-    // === Gas quality row ===
-    function gasQualityRow() {
         const EMOJIS = { '0': '➖', 'Bueno': '🟢', 'Medio': '🟡', 'Malo': '🔴' };
-        const cells = LMC_STEPS.map((_, i) => {
-            let val = d[`gas-q-${i}`] || '0';
-            if (['1','2','3','4','5'].includes(val)) {
-                if (val >= '4') val = 'Bueno';
-                else if (val === '3') val = 'Medio';
-                else val = 'Malo';
+
+        return chunks.map((chunk, chunkIdx) => {
+            const chunkSteps = [];
+            for (let i = chunk.start; i < chunk.end; i++) {
+                chunkSteps.push({ idx: i, liter: ((i + 1) * 0.5).toFixed(1) });
             }
-            const emoji = EMOJIS[val] || '➖';
-            return `<td style="font-size:12px; text-align:center">${emoji}</td>`;
+
+            const ths = chunkSteps.map(s => `<th>${s.liter}</th>`).join('');
+            const tempTds = chunkSteps.map(s => `<td>${d[`lmc-${prefix}-${s.idx}`] || '-'}</td>`).join('');
+
+            let qualityTr = '';
+            if (showQuality) {
+                const qTds = chunkSteps.map(s => {
+                    let qVal = d[`gas-q-${s.idx}`] || '0';
+                    if (['1','2','3','4','5'].includes(qVal)) {
+                        if (qVal >= '4') qVal = 'Bueno';
+                        else if (qVal === '3') qVal = 'Medio';
+                        else qVal = 'Malo';
+                    }
+                    const emoji = EMOJIS[qVal] || '➖';
+                    return `<td style="font-size:11px; text-align:center">${emoji}</td>`;
+                }).join('');
+                qualityTr = `<tr><td><strong>🟢 Calidad</strong></td>${qTds}</tr>`;
+            }
+
+            const headerNote = chunks.length > 1 ? `<div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem; font-weight:600">Tramo ${((chunk.start)*0.5 + 0.5).toFixed(1)}L – ${(chunk.end * 0.5).toFixed(1)}L</div>` : '';
+
+            return `
+            ${headerNote}
+            <table class="print-table" style="margin-bottom:0.4rem">
+                <thead>
+                    <tr><th style="min-width:38px">L</th>${ths}</tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>${label}</strong></td>${tempTds}</tr>
+                    ${qualityTr}
+                </tbody>
+            </table>
+            `;
         }).join('');
-        return `<tr><td><strong>🟢 Calidad</strong></td>${cells}</tr>`;
     }
 
     // === Cycle summary ===
@@ -107,14 +129,29 @@ window.buildReportHTML = function(data, test) {
             cph = Math.ceil(cph * 1.15);
         }
 
+        const extLabel = prefix === 'gas' ? 'Tiempo Extracción (hasta agotar mezclador)' : 'Tiempo Extracción';
+        const recLabel = prefix === 'gas' ? 'Tiempo Recuperación (recarga del gasatore)' : 'Tiempo Recuperación';
+
         return `
         <div class="print-grid cycle-summary-box" style="margin-top:0.35rem; background:#f8fafc; padding:0.45rem 0.65rem; border-radius:6px; border-left: 3px solid var(--primary); font-size:0.8rem;">
-            <div><strong>Tiempo Extracción:</strong> ${formatMMSS(extSec)} min</div>
-            <div><strong>Tiempo Recuperación:</strong> ${formatMMSS(recSec)} min</div>
+            <div><strong>${extLabel}:</strong> ${formatMMSS(extSec)} min</div>
+            <div><strong>${recLabel}:</strong> ${formatMMSS(recSec)} min</div>
             <div><strong>Tiempo Total Ciclo:</strong> ${formatMMSS(totalSec)} min</div>
             <div style="font-size: 0.88rem; color: var(--primary); grid-column: 1 / -1; margin-top: 0.1rem;"><strong>Rendimiento Estimado:</strong> ${cph > 0 ? cph : '-'} Ciclos/Hora</div>
         </div>
         `;
+    }
+
+    function getObtainedLiters(prefix) {
+        let count = 0;
+        let i = 0;
+        while (true) {
+            const val = d[`lmc-${prefix}-${i}`];
+            if (val === undefined || String(val).trim() === '') break;
+            count++;
+            i++;
+        }
+        return (count * 0.5).toFixed(1);
     }
 
     // === Global gas stars ===
@@ -141,6 +178,7 @@ window.buildReportHTML = function(data, test) {
             <div><strong>Cañerías:</strong> ${(d.canerias || []).join(', ') || '-'}</div>
             <div><strong>Funciones:</strong> ${(d.funciones || []).join(', ') || '-'}</div>
             <div><strong>Rendimiento:</strong> ${v('rendimiento')} L/h</div>
+            <div><strong>Litros Continuos (Proveedor):</strong> ${v('litros-continuos-proveedor')} L</div>
             <div><strong>Rango Fría:</strong> ${v('temp-fria-min')} – ${v('temp-fria-max')} ºC</div>
             ${hasHotWater ? `<div><strong>Rango Caliente:</strong> ${v('temp-caliente-min')} – ${v('temp-caliente-max')} ºC</div>` : ''}
             <div><strong>Rango Presión Agua:</strong> ${v('presion-min')} – ${v('presion-max')} PSI</div>
@@ -185,13 +223,21 @@ window.buildReportHTML = function(data, test) {
 
     <div class="print-section" style="page-break-before:always">
         <h2>5.1 LMC — Agua Fría &nbsp;<small style="font-weight:400;font-size:0.85rem">Rango: ${v('temp-fria-min')} – ${v('temp-fria-max')} ºC</small></h2>
-        <table class="print-table"><thead>${lmcHeader}</thead><tbody>${lmcRow('fria','ºC')}</tbody></table>
+        <div style="display:flex;gap:1.5rem;margin-bottom:0.35rem;font-size:0.82rem">
+            <span><strong>Declarado Proveedor:</strong> ${v('litros-continuos-proveedor')} L</span>
+            <span><strong>Obtenido en Test:</strong> ${getObtainedLiters('fria')} L</span>
+        </div>
+        ${renderLmcTables('fria', 'ºC', false)}
         ${cycleSummary('fria')}
     </div>
 
     <div class="print-section">
         <h2>5.2 LMC — Agua con Gas &nbsp;<small style="font-weight:400;font-size:0.85rem">Ref. Rango Fría: ${v('temp-fria-min')} – ${v('temp-fria-max')} ºC</small></h2>
-        <table class="print-table"><thead>${lmcHeader}</thead><tbody>${lmcRow('gas','ºC')}${gasQualityRow()}</tbody></table>
+        <div style="display:flex;gap:1.5rem;margin-bottom:0.35rem;font-size:0.82rem">
+            <span><strong>Declarado Proveedor:</strong> ${v('litros-continuos-proveedor')} L</span>
+            <span><strong>Obtenido en Test (hasta agotar mezclador):</strong> ${getObtainedLiters('gas')} L</span>
+        </div>
+        ${renderLmcTables('gas', 'ºC', true)}
         <p style="font-size:0.8rem;margin:0.35rem 0"><strong>Calidad Global:</strong> <span style="color:#d97706;font-size:0.9rem">${globalStars}</span> (${globalStarVal}/5)</p>
         ${cycleSummary('gas')}
     </div>
@@ -199,7 +245,11 @@ window.buildReportHTML = function(data, test) {
     ${hasHotWater ? `
     <div class="print-section">
         <h2>5.3 LMC — Agua Caliente &nbsp;<small style="font-weight:400;font-size:0.85rem">Rango: ${v('temp-caliente-min')} – ${v('temp-caliente-max')} ºC</small></h2>
-        <table class="print-table"><thead>${lmcHeader}</thead><tbody>${lmcRow('caliente','ºC')}</tbody></table>
+        <div style="display:flex;gap:1.5rem;margin-bottom:0.35rem;font-size:0.82rem">
+            <span><strong>Declarado Proveedor:</strong> ${v('litros-continuos-proveedor')} L</span>
+            <span><strong>Obtenido en Test:</strong> ${getObtainedLiters('caliente')} L</span>
+        </div>
+        ${renderLmcTables('caliente', 'ºC', false)}
         ${cycleSummary('caliente')}
     </div>
     ` : ''}

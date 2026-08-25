@@ -966,3 +966,239 @@ ul.print-list li { margin-bottom: 0.3rem; }
 .custom-dialog-footer button {
     min-width: 90px;
 }
+
+/* ============================================================
+   LMC HERO QUICK-ENTRY CARDS & HISTORY FEEDS
+   ============================================================ */
+.lmc-quick-entry-card {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.25rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+}
+
+.lmc-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.lmc-step-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.lmc-badge-label {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.lmc-badge-volume {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--primary);
+    background: rgba(37, 99, 235, 0.1);
+    padding: 0.25rem 0.85rem;
+    border-radius: 20px;
+    border: 1.5px solid rgba(37, 99, 235, 0.25);
+    letter-spacing: 0.5px;
+    display: inline-block;
+    min-width: 75px;
+    text-align: center;
+}
+
+.lmc-stats-badge {
+    font-size: 0.88rem;
+    color: var(--text-main);
+    background: var(--input-bg);
+    padding: 0.4rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.lmc-card-body {
+    margin-bottom: 1rem;
+}
+
+.lmc-input-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.lmc-gas-inputs-grid {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.lmc-hero-temp-input {
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    padding: 0.65rem 0.85rem !important;
+    text-align: center;
+    border-radius: 8px !important;
+    border: 2px solid var(--border) !important;
+    transition: all 0.2s ease !important;
+}
+
+.lmc-hero-temp-input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+}
+
+.btn-lmc-add {
+    padding: 0.65rem 1.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 48px;
+    min-width: 140px;
+}
+
+.key-hint {
+    background: rgba(255, 255, 255, 0.28);
+    color: inherit;
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    line-height: 1;
+}
+
+/* Gas Quality Pill Selector */
+.gas-quality-pill-selector {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.quality-pill {
+    flex: 1;
+    padding: 0.65rem 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    user-select: none;
+}
+
+.quality-pill:hover {
+    border-color: var(--primary);
+    color: var(--text-main);
+}
+
+.quality-pill.active {
+    border-color: var(--primary);
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+/* Feedback message */
+.lmc-feedback-msg {
+    margin-top: 0.6rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    min-height: 1.25rem;
+    transition: opacity 0.2s;
+}
+.lmc-feedback-msg.in-range { color: var(--success); }
+.lmc-feedback-msg.out-range { color: var(--danger); }
+
+/* History Feed Section */
+.lmc-feed-section {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+}
+
+.lmc-feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.btn-text-action {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0;
+    text-decoration: underline;
+    transition: opacity 0.15s;
+}
+
+.btn-text-action:hover { opacity: 0.8; }
+
+.lmc-feed-chips {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 2px 0;
+}
+
+.feed-empty {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.lmc-feed-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.84rem;
+    font-family: monospace, inherit;
+    font-weight: 600;
+    animation: fadeIn 0.15s ease;
+}
+
+.lmc-feed-item.in-range {
+    border-color: rgba(16, 185, 129, 0.45);
+    background: rgba(16, 185, 129, 0.08);
+    color: #065f46;
+}
+[data-theme="dark"] .lmc-feed-item.in-range {
+    color: #34d399;
+}
+
+.lmc-feed-item.out-range {
+    border-color: rgba(239, 68, 68, 0.45);
+    background: rgba(239, 68, 68, 0.08);
+    color: #991b1b;
+}
+[data-theme="dark"] .lmc-feed-item.out-range {
+    color: #f87171;
+}
+
