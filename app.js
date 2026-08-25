@@ -367,6 +367,11 @@ function startWizard() {
     const test = getTest(activeTestId);
     if (!test) return;
 
+    // Build initial LMC grids (0.5L - 5.0L)
+    buildInitialLmc('lmc-fria-inputs', 'fria', 'fria');
+    buildInitialLmc('lmc-gas-inputs', 'gas', 'fria');
+    buildInitialLmc('lmc-caliente-inputs', 'caliente', 'caliente');
+
     // Reset all DOM inputs
     document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id], #view-wizard select[id]').forEach(el => {
         if (el.type === 'checkbox') el.checked = false;
@@ -381,20 +386,6 @@ function startWizard() {
     const hidGasStars = document.getElementById('gas-calidad-val');
     if (hidGasStars) hidGasStars.value = '0';
 
-    // Reset LMC cells
-    for (let i = 0; i < 10; i++) {
-        ['fria', 'gas', 'caliente'].forEach(prefix => {
-            const inp = document.getElementById(`lmc-${prefix}-${i}`);
-            if (inp) { inp.value = ''; inp.style.background = ''; inp.style.color = ''; inp.disabled = true; inp.classList.add('lmc-seq-locked'); }
-        });
-        const qCell = document.querySelector(`[data-gas-q-idx="${i}"]`);
-        if (qCell) {
-            qCell.classList.add('lmc-seq-locked');
-            const sel = document.getElementById(`gas-q-${i}`);
-            if (sel) { sel.value = '0'; sel.disabled = true; }
-        }
-    }
-
     // Reset cycles and stopwatches
     cycleCounts.fria = 0; cycleCounts.gas = 0; cycleCounts.caliente = 0;
     ['fria', 'gas', 'caliente'].forEach(p => { 
@@ -408,14 +399,13 @@ function startWizard() {
         }
         updateStopwatchDisplay(p);
         
-        // Reset hidden inputs for stopwatches just in case
         const extInp = document.getElementById(`extraccion-${p}`);
-        if (extInp) extInp.value = '0';
+        if (extInp) extInp.value = '00:00';
         
         updateCycleDisplay(p);
     });
 
-    // Reset conditionl displays
+    // Reset conditional displays
     document.getElementById('termostato-wrapper').style.display = 'flex';
     document.getElementById('tanque-fields').style.display = 'none';
 
@@ -455,26 +445,87 @@ function updateWizard() {
     document.getElementById('btn-pdf-wizard').classList.toggle('hidden', !isLast);
 
     refreshSeqForStep(currentStep);
-    if (currentStep === 2) refreshStep2Checklist();
+    if (currentStep === 4) refreshStep4Checklist();
     updateMachetes();
+    updateGasDisclaimer();
     window.scrollTo(0, 0);
 }
 
-// ======================== SEQUENTIAL CHECKLIST (Step 2) ========================
-// Each checklist item in step 2 unlocks the next one when checked
-const STEP2_ORDER = ['chk-peroxido', 'chk-circuito', 'chk-encendido', 'chk-retirar', 'chk-tirita'];
+// ======================== TIME HELPERS (MM:SS) ========================
+function formatMMSS(totalSeconds) {
+    if (isNaN(totalSeconds) || totalSeconds === null || totalSeconds === undefined) return '00:00';
+    const s = Math.round(Math.max(0, totalSeconds));
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
 
-function refreshStep2Checklist() {
-    STEP2_ORDER.forEach((id, i) => {
+function parseMMSS(val) {
+    if (!val) return 0;
+    const str = String(val).trim();
+    if (str.includes(':')) {
+        const parts = str.split(':');
+        const mins = parseFloat(parts[0]) || 0;
+        const secs = parseFloat(parts[1]) || 0;
+        return mins * 60 + secs;
+    }
+    const num = parseFloat(str) || 0;
+    if (num > 0 && num < 100 && String(val).includes('.')) return Math.round(num * 60);
+    return num;
+}
+
+function setupTimeInputMasks() {
+    document.querySelectorAll('.time-input').forEach(input => {
+        input.addEventListener('blur', () => {
+            let val = input.value.trim();
+            if (!val) return;
+            if (/^\d{1,2}$/.test(val)) {
+                const n = parseInt(val, 10);
+                if (input.id.includes('500')) {
+                    input.value = `00:${n.toString().padStart(2, '0')}`;
+                } else {
+                    input.value = `${n.toString().padStart(2, '0')}:00`;
+                }
+            } else if (/^\d{1,2}:\d{1,2}$/.test(val)) {
+                const [m, s] = val.split(':').map(x => parseInt(x, 10));
+                input.value = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+            if (input.id.startsWith('recuperacion-')) {
+                const type = input.id.replace('recuperacion-', '');
+                updateCycleDisplay(type);
+            }
+            if (input.id === 'tiempo-optimo-fria') {
+                const gasInput = document.getElementById('tiempo-optimo-gas');
+                if (gasInput && !gasInput.value) {
+                    gasInput.value = input.value;
+                }
+            }
+            saveState();
+        });
+    });
+}
+
+function updateGasDisclaimer() {
+    const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
+    const hasGas = chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada');
+    const disclaimer = document.getElementById('disclaimer-gas-corte');
+    if (disclaimer) disclaimer.style.display = hasGas ? 'block' : 'none';
+}
+
+// ======================== SEQUENTIAL CHECKLIST (Step 4) ========================
+// Each checklist item in step 4 unlocks the next one when checked
+const STEP4_ORDER = ['chk-peroxido', 'chk-circuito', 'chk-encendido', 'chk-retirar', 'chk-tirita'];
+
+function refreshStep4Checklist() {
+    STEP4_ORDER.forEach((id, i) => {
         const el = document.getElementById(id);
         if (!el) return;
         const label = el.closest('.checklist-item');
         if (i === 0) {
-            // First item is always enabled
             el.disabled = false;
-            if (label) label.style.opacity = '1'; label && (label.style.pointerEvents = 'auto');
+            if (label) { label.style.opacity = '1'; label.style.pointerEvents = 'auto'; }
         } else {
-            const prevChecked = document.getElementById(STEP2_ORDER[i - 1])?.checked;
+            const prevChecked = document.getElementById(STEP4_ORDER[i - 1])?.checked;
             el.disabled = !prevChecked;
             if (label) {
                 label.style.opacity = prevChecked ? '1' : '0.32';
@@ -485,9 +536,9 @@ function refreshStep2Checklist() {
     });
 }
 
-STEP2_ORDER.forEach(id => {
+STEP4_ORDER.forEach(id => {
     document.getElementById(id)?.addEventListener('change', () => {
-        refreshStep2Checklist();
+        refreshStep4Checklist();
         saveState();
     });
 });
@@ -513,13 +564,13 @@ function validateCurrentStep() {
         return GATE_CHECKS['1-1']() && GATE_CHECKS['1-2']() && GATE_CHECKS['1-3']() && GATE_CHECKS['1-4']();
     }
     if (currentStep === 2) {
-        return STEP2_ORDER.every(id => document.getElementById(id)?.checked);
+        return GATE_CHECKS['2-1']() && GATE_CHECKS['2-2']();
     }
     if (currentStep === 3) {
-        return GATE_CHECKS['3-1']();
+        return GATE_CHECKS['3-1']() && GATE_CHECKS['3-2']();
     }
     if (currentStep === 4) {
-        return GATE_CHECKS['4-1']();
+        return STEP4_ORDER.every(id => document.getElementById(id)?.checked);
     }
     if (currentStep === 5) {
         const lmcOk = GATE_CHECKS['5-99']();
@@ -544,11 +595,11 @@ function validateCurrentStep() {
 document.getElementById('btn-next').addEventListener('click', async () => {
     if (!validateCurrentStep()) {
         await customAlert('Por favor, completá todos los campos obligatorios de este paso antes de continuar.');
-        if (currentStep === 2) document.getElementById('step2-error').classList.remove('hidden');
+        if (currentStep === 4) document.getElementById('step4-error')?.classList.remove('hidden');
         return;
     }
-    if (currentStep === 2) {
-        document.getElementById('step2-error').classList.add('hidden');
+    if (currentStep === 4) {
+        document.getElementById('step4-error')?.classList.add('hidden');
     }
     saveState();
     let next = currentStep + 1;
@@ -599,7 +650,7 @@ async function finalizeTest() {
 
 // ======================== SEQUENTIAL VALIDATION ========================
 const GATE_CHECKS = {
-    // Step 1: exit gates — each gate's pass unlocks the NEXT section
+    // Step 1: Datos Generales
     '1-1': () => {
         const filled = ['tecnico', 'fecha-ingreso', 'fecha-testeo', 'marca', 'modelo'].every(id => (document.getElementById(id)?.value || '').trim() !== '');
         if (!filled) return false;
@@ -614,38 +665,77 @@ const GATE_CHECKS = {
         if (hasHotWater()) req.push('temp-caliente-min', 'temp-caliente-max');
         return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
     },
-    '3-1': () => ['temp-ambiente', 'temp-agua-entrada', 'presion-co2-medida'].every(id => (document.getElementById(id)?.value || '').trim() !== ''),
-    '4-1': () => {
-        const req = ['tiempo-optimo-fria', 'tiempo-optimo-gas'];
+
+    // Step 2: Condiciones y Funcionalidades
+    '2-1': () => ['temp-ambiente', 'temp-agua-entrada', 'presion-co2-medida'].every(id => (document.getElementById(id)?.value || '').trim() !== ''),
+    '2-2': () => {
+        const p20 = document.getElementById('chk-presion-20psi')?.checked;
+        const vent = document.getElementById('chk-ventilacion')?.checked;
+        const disp = document.getElementById('chk-dispensar')?.checked;
+        const perd = document.getElementById('chk-perdidas')?.checked;
+        const hasTank = document.getElementById('chk-tiene-tanque')?.checked;
+        let tankOk = true;
+        if (hasTank) {
+            const cap = (document.getElementById('capacidad-tanque')?.value || '').trim();
+            const tLlenado = (document.getElementById('tiempo-llenado-tanque')?.value || '').trim();
+            tankOk = cap !== '' && tLlenado !== '';
+        }
+        return p20 && vent && disp && perd && tankOk;
+    },
+
+    // Step 3: Tiempos de Corte y 500ml
+    '3-1': () => {
+        const req = ['tiempo-optimo-fria'];
         if (hasHotWater()) req.push('tiempo-optimo-caliente');
+        const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
+        if (chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada')) {
+            req.push('tiempo-optimo-gas');
+        }
         return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
     },
-    // Steps 5,6,7: seq=99 acts as a SELF-GATE — unlocks when LMC is fully filled OR any cell is red (out of range logic)
+    '3-2': () => {
+        const req = ['tiempo-500-fria'];
+        if (hasHotWater()) req.push('tiempo-500-caliente');
+        const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
+        if (chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada')) {
+            req.push('tiempo-500-gas');
+        }
+        return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
+    },
+
+    // Step 4: Sanitizado
+    '4-1': () => STEP4_ORDER.every(id => document.getElementById(id)?.checked),
+
+    // Steps 5,6,7: LMC
     '5-99': () => {
-        const allFilled = LTRS.every((_, i) => (document.getElementById(`lmc-fria-${i}`)?.value || '').trim() !== '');
-        if (allFilled) return true;
-        return LTRS.some((_, i) => { const v = parseFloat(document.getElementById(`lmc-fria-${i}`)?.value || ''); return shouldLockNext('fria', v); });
+        const first = (document.getElementById('lmc-fria-0')?.value || '').trim() !== '';
+        if (!first) return false;
+        const maxIdx = getDomMaxLmcIdx('fria');
+        for (let i = 0; i <= maxIdx; i++) {
+            const v = parseFloat(document.getElementById(`lmc-fria-${i}`)?.value || '');
+            if (shouldLockNext('fria', v)) return true;
+        }
+        return true;
     },
     '6-99': () => {
-        // First check if temperatures are completed (all filled OR out of bounds hit)
-        const allFilled = LTRS.every((_, i) => (document.getElementById(`lmc-gas-${i}`)?.value || '').trim() !== '');
-        const outOfBounds = LTRS.some((_, i) => { const v = parseFloat(document.getElementById(`lmc-gas-${i}`)?.value || ''); return shouldLockNext('gas', v); });
-        if (!allFilled && !outOfBounds) return false;
-
-        // Then ensure that for every filled temperature, the corresponding gas quality is selected (not '0')
-        return LTRS.every((_, i) => {
+        const first = (document.getElementById('lmc-gas-0')?.value || '').trim() !== '';
+        if (!first) return false;
+        const maxIdx = getDomMaxLmcIdx('gas');
+        for (let i = 0; i <= maxIdx; i++) {
             const tempVal = document.getElementById(`lmc-gas-${i}`)?.value || '';
-            if (tempVal.trim() === '') return true; // Empty temp cell means we don't care about its quality
-            const qVal = document.getElementById(`gas-q-${i}`)?.value || '0';
-            return qVal !== '0';
-        });
+            if (tempVal.trim() !== '') {
+                const qVal = document.getElementById(`gas-q-${i}`)?.value || '0';
+                if (qVal === '0') return false;
+            }
+        }
+        return true;
     },
     '7-99': () => {
         if (!hasHotWater()) return true;
-        const allFilled = LTRS.every((_, i) => (document.getElementById(`lmc-caliente-${i}`)?.value || '').trim() !== '');
-        if (allFilled) return true;
-        return LTRS.some((_, i) => { const v = parseFloat(document.getElementById(`lmc-caliente-${i}`)?.value || ''); return shouldLockNext('caliente', v); });
-    },
+        const first = (document.getElementById('lmc-caliente-0')?.value || '').trim() !== '';
+        if (!first) return false;
+        return true;
+    }
 };
 
 function refreshSeqForStep(step) {
@@ -658,41 +748,141 @@ function refreshSeqForStep(step) {
         const checker = GATE_CHECKS[key];
 
         if (locked) {
-            // A previous section was locked → cascade lock
             section.classList.add('seq-locked');
         } else if (seqNum >= 99) {
-            // SELF-GATE mode: this section locks/unlocks based on its own prerequisite
             if (checker && !checker()) section.classList.add('seq-locked');
             else section.classList.remove('seq-locked');
-            // If it's still locked, cascade to any subsequent sections
             if (checker && !checker()) locked = true;
         } else {
-            // EXIT-GATE mode: section is visible, but its gate controls the NEXT section
             section.classList.remove('seq-locked');
             if (i < sections.length - 1 && checker && !checker()) locked = true;
         }
     });
 }
 
-// ======================== LMC TABLES ========================
-function buildLmcInputs(containerId, prefix, rangeType) {
-    const container = document.getElementById(containerId);
-    LTRS.forEach((_, idx) => {
+// ======================== DYNAMIC LMC TABLES ========================
+function getDomMaxLmcIdx(prefix) {
+    let max = -1;
+    document.querySelectorAll(`[id^="lmc-${prefix}-"]`).forEach(el => {
+        const idx = parseInt(el.id.replace(`lmc-${prefix}-`, ''), 10);
+        if (!isNaN(idx) && idx > max) max = idx;
+    });
+    return max >= 0 ? max : 9;
+}
+
+function createLmcColumn(prefix, idx) {
+    const header = document.getElementById(`lmc-${prefix}-header`);
+    const inputsRow = document.getElementById(`lmc-${prefix}-inputs`);
+    if (!header || !inputsRow) return;
+
+    // Header liter label
+    const headerCells = header.querySelectorAll('div:not(.lmc-corner)');
+    if (headerCells.length <= idx) {
+        const liter = ((idx + 1) * 0.5).toFixed(1);
+        const th = document.createElement('div');
+        th.textContent = liter;
+        header.appendChild(th);
+    }
+
+    // Input cell
+    if (!document.getElementById(`lmc-${prefix}-${idx}`)) {
         const wrapper = document.createElement('div');
         const inp = document.createElement('input');
-        inp.type = 'number'; inp.id = `lmc-${prefix}-${idx}`; inp.step = '0.1';
-        inp.dataset.prefix = prefix; inp.dataset.rangeType = rangeType; inp.dataset.idx = idx;
+        inp.type = 'number';
+        inp.id = `lmc-${prefix}-${idx}`;
+        inp.step = '0.1';
+        inp.dataset.prefix = prefix;
+        inp.dataset.rangeType = (prefix === 'caliente') ? 'caliente' : 'fria';
+        inp.dataset.idx = idx;
         inp.classList.add('lmc-input');
-        if (idx > 0) { inp.disabled = true; inp.classList.add('lmc-seq-locked'); }
+        if (idx > 0) {
+            inp.disabled = true;
+            inp.classList.add('lmc-seq-locked');
+        }
+
         inp.addEventListener('input', () => {
             validateLmcCell(inp);
             unlockNextLmc(prefix, idx);
             refreshSeqForStep(currentStep);
             saveState();
         });
+
         wrapper.appendChild(inp);
-        container.appendChild(wrapper);
-    });
+        inputsRow.appendChild(wrapper);
+    }
+
+    // Gas Quality cell
+    if (prefix === 'gas') {
+        const qualityRow = document.getElementById('lmc-gas-quality-row');
+        if (qualityRow && !document.querySelector(`[data-gas-q-idx="${idx}"]`)) {
+            const cell = document.createElement('div');
+            cell.classList.add('lmc-quality-cell', 'lmc-seq-locked');
+            cell.setAttribute('data-gas-q-idx', idx);
+            cell.innerHTML = `
+                <select id="gas-q-${idx}" class="gas-q-select" disabled style="width: 100%; font-size: 0.8rem; border-radius: 4px; padding: 2px; text-align: center; background: transparent; border: 1px solid var(--border);">
+                    <option value="0">➖</option>
+                    <option value="Bueno">🟢 Bueno</option>
+                    <option value="Medio">🟡 Medio</option>
+                    <option value="Malo">🔴 Malo</option>
+                </select>
+            `;
+            const sel = cell.querySelector('select');
+            sel.addEventListener('change', () => {
+                refreshSeqForStep(currentStep);
+                saveState();
+            });
+            qualityRow.appendChild(cell);
+        }
+    }
+}
+
+function ensureLmcColumn(prefix, targetIdx) {
+    const currentMax = getDomMaxLmcIdx(prefix);
+    for (let i = currentMax + 1; i <= targetIdx; i++) {
+        createLmcColumn(prefix, i);
+    }
+}
+
+window.manualAddLmcColumn = function(prefix) {
+    const currentMax = getDomMaxLmcIdx(prefix);
+    const nextIdx = currentMax + 1;
+    ensureLmcColumn(prefix, nextIdx);
+
+    const prevInp = document.getElementById(`lmc-${prefix}-${currentMax}`);
+    if (prevInp && prevInp.value.trim() !== '') {
+        const prevVal = parseFloat(prevInp.value);
+        if (!shouldLockNext(prefix, prevVal)) {
+            const nextInp = document.getElementById(`lmc-${prefix}-${nextIdx}`);
+            if (nextInp) {
+                nextInp.disabled = false;
+                nextInp.classList.remove('lmc-seq-locked');
+            }
+            if (prefix === 'gas') {
+                const qCell = document.querySelector(`[data-gas-q-idx="${nextIdx}"]`);
+                if (qCell) qCell.classList.remove('lmc-seq-locked');
+                const sel = document.getElementById(`gas-q-${nextIdx}`);
+                if (sel) sel.disabled = false;
+            }
+        }
+    }
+    saveState();
+};
+
+function buildInitialLmc(containerId, prefix, rangeType) {
+    const header = document.getElementById(`lmc-${prefix}-header`);
+    const inputsRow = document.getElementById(`lmc-${prefix}-inputs`);
+    if (!header || !inputsRow) return;
+
+    header.innerHTML = '<div class="lmc-corner">L</div>';
+    inputsRow.innerHTML = '<div class="lmc-corner">ºC</div>';
+    if (prefix === 'gas') {
+        const qualityRow = document.getElementById('lmc-gas-quality-row');
+        if (qualityRow) qualityRow.innerHTML = '<div class="lmc-corner quality-label" style="font-size:0.75rem;">Gas</div>';
+    }
+
+    for (let i = 0; i < 10; i++) {
+        createLmcColumn(prefix, i);
+    }
 }
 
 function shouldLockNext(prefix, val) {
@@ -727,28 +917,48 @@ function unlockNextLmc(prefix, idx) {
         const outOfRange = shouldLockNext(prefix, currentVal);
 
         if (!outOfRange) {
-            // Unlock next temp cell
-            const next = document.getElementById(`lmc-${prefix}-${idx + 1}`);
-            if (next) { next.disabled = false; next.classList.remove('lmc-seq-locked'); }
-        } else {
-            // If out of range, lock all subsequent cells
-            for (let i = idx + 1; i < 10; i++) {
-                const inp = document.getElementById(`lmc-${prefix}-${i}`);
-                if (inp) { inp.disabled = true; inp.classList.add('lmc-seq-locked'); inp.value = ''; inp.style.background = ''; inp.style.color = ''; }
+            const nextIdx = idx + 1;
+            ensureLmcColumn(prefix, nextIdx);
+            const next = document.getElementById(`lmc-${prefix}-${nextIdx}`);
+            if (next) {
+                next.disabled = false;
+                next.classList.remove('lmc-seq-locked');
             }
             if (prefix === 'gas') {
-                for (let i = idx + 1; i < 10; i++) lockGasQuality(i);
+                const qCell = document.querySelector(`[data-gas-q-idx="${nextIdx}"]`);
+                if (qCell) qCell.classList.remove('lmc-seq-locked');
+                const sel = document.getElementById(`gas-q-${nextIdx}`);
+                if (sel) sel.disabled = false;
+            }
+        } else {
+            // Out of range: lock all subsequent cells
+            const maxIdx = getDomMaxLmcIdx(prefix);
+            for (let i = idx + 1; i <= maxIdx; i++) {
+                const inp = document.getElementById(`lmc-${prefix}-${i}`);
+                if (inp) {
+                    inp.disabled = true;
+                    inp.classList.add('lmc-seq-locked');
+                    inp.value = '';
+                    inp.style.background = '';
+                    inp.style.color = '';
+                }
+                if (prefix === 'gas') lockGasQuality(i);
             }
         }
     } else {
-        // Lock all subsequent temp cells and clear them
-        for (let i = idx + 1; i < 10; i++) {
+        const maxIdx = getDomMaxLmcIdx(prefix);
+        for (let i = idx + 1; i <= maxIdx; i++) {
             const inp = document.getElementById(`lmc-${prefix}-${i}`);
-            if (inp) { inp.disabled = true; inp.classList.add('lmc-seq-locked'); inp.value = ''; inp.style.background = ''; inp.style.color = ''; }
+            if (inp) {
+                inp.disabled = true;
+                inp.classList.add('lmc-seq-locked');
+                inp.value = '';
+                inp.style.background = '';
+                inp.style.color = '';
+            }
         }
-        // Lock current and subsequent gas quality cells
         if (prefix === 'gas') {
-            for (let i = idx; i < 10; i++) lockGasQuality(i);
+            for (let i = idx; i <= maxIdx; i++) lockGasQuality(i);
         }
     }
 }
@@ -778,29 +988,7 @@ function validateLmcCell(inp) {
 }
 
 function buildGasQualityRow(containerId) {
-    const container = document.getElementById(containerId);
-    
-    LTRS.forEach((_, idx) => {
-        const cell = document.createElement('div');
-        cell.classList.add('lmc-quality-cell', 'lmc-seq-locked');
-        cell.setAttribute('data-gas-q-idx', idx);
-        
-        cell.innerHTML = `
-            <select id="gas-q-${idx}" class="gas-q-select" disabled style="width: 100%; font-size: 0.8rem; border-radius: 4px; padding: 2px; text-align: center; background: transparent; border: 1px solid var(--border);">
-                <option value="0">➖</option>
-                <option value="Bueno">🟢 Bueno</option>
-                <option value="Medio">🟡 Medio</option>
-                <option value="Malo">🔴 Malo</option>
-            </select>
-        `;
-        
-        const sel = cell.querySelector('select');
-        sel.addEventListener('change', () => {
-            saveState();
-        });
-        
-        container.appendChild(cell);
-    });
+    // Initialized within buildInitialLmc
 }
 
 // ======================== STOPWATCH LOGIC ========================
@@ -824,17 +1012,19 @@ function updateCycleDisplay(type) {
     
     if (!extInput || !recInput || !resultBox) return;
     
-    const ext = parseFloat(extInput.value) || 0;
-    const rec = parseFloat(recInput.value) || 0;
-    const total = ext + rec;
+    const extSec = parseMMSS(extInput.value);
+    const recSec = parseMMSS(recInput.value);
+    const totalSec = extSec + recSec;
     
-    if (total > 0) {
+    if (totalSec > 0) {
         resultBox.style.display = 'block';
-        document.getElementById(`cycle-total-${type}`).textContent = formatTime(Math.round(total * 60000));
+        const totalEl = document.getElementById(`cycle-total-${type}`);
+        if (totalEl) totalEl.textContent = formatMMSS(totalSec);
         
-        let cph = 60 / total;
+        let cph = 3600 / totalSec;
         cph = Math.ceil(cph * 1.15); // +15% tolerance, rounded up
-        document.getElementById(`cycle-cph-${type}`).textContent = cph;
+        const cphEl = document.getElementById(`cycle-cph-${type}`);
+        if (cphEl) cphEl.textContent = cph;
     } else {
         resultBox.style.display = 'none';
     }
@@ -844,98 +1034,15 @@ function updateStopwatchDisplay(type) {
     const sw = stopwatches[type];
     const ms = sw.interval ? (Date.now() - sw.startTime + sw.elapsedMs) : sw.elapsedMs;
     const display = document.getElementById(`sw-display-${type}`);
-    if (display) display.textContent = formatTime(ms);
+    if (display) display.textContent = formatMMSS(Math.floor(ms / 1000));
     
-    // Save to hidden input in minutes
+    // Save to hidden input in MM:SS
     const input = document.getElementById(`extraccion-${type}`);
     if (input) {
-        input.value = (ms / 60000).toFixed(2);
+        input.value = formatMMSS(Math.floor(ms / 1000));
         updateCycleDisplay(type);
     }
 }
-
-['fria', 'gas', 'caliente'].forEach(type => {
-    const btnStart = document.getElementById(`btn-sw-start-${type}`);
-    const btnStop = document.getElementById(`btn-sw-stop-${type}`);
-    const btnReset = document.getElementById(`btn-sw-reset-${type}`);
-    
-    if (btnStart) {
-        btnStart.addEventListener('click', () => {
-            if (stopwatches[type].interval) return;
-            stopwatches[type].startTime = Date.now();
-            stopwatches[type].interval = setInterval(() => updateStopwatchDisplay(type), 100);
-            
-            const firstCell = document.getElementById(`lmc-${type}-0`);
-            if (firstCell && firstCell.disabled) {
-                firstCell.disabled = false;
-                firstCell.classList.remove('lmc-seq-locked');
-                if (type === 'gas') {
-                    const qCell = document.querySelector(`[data-gas-q-idx="0"]`);
-                    if (qCell) qCell.classList.remove('lmc-seq-locked');
-                    const sel = document.getElementById(`gas-q-0`);
-                    if (sel) sel.disabled = false;
-                }
-                saveState();
-            }
-        });
-    }
-    
-    if (btnStop) {
-        btnStop.addEventListener('click', () => {
-            if (!stopwatches[type].interval) return;
-            clearInterval(stopwatches[type].interval);
-            stopwatches[type].interval = null;
-            stopwatches[type].elapsedMs += (Date.now() - stopwatches[type].startTime);
-            updateStopwatchDisplay(type);
-            saveState();
-        });
-    }
-    
-    if (btnReset) {
-        btnReset.addEventListener('click', () => {
-            clearInterval(stopwatches[type].interval);
-            stopwatches[type].interval = null;
-            stopwatches[type].elapsedMs = 0;
-            updateStopwatchDisplay(type);
-            saveState();
-        });
-    }
-    
-    const recInput = document.getElementById(`recuperacion-${type}`);
-    if (recInput) {
-        recInput.addEventListener('input', () => {
-            updateCycleDisplay(type);
-            saveState();
-        });
-    }
-});
-
-// ======================== CHIP GROUPS ========================
-document.querySelectorAll('.chip-group').forEach(group => {
-    group.addEventListener('click', e => {
-        const chip = e.target.closest('.chip');
-        if (!chip) return;
-        if (group.classList.contains('single-select')) group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        chip.classList.toggle('active');
-        if (group.id === 'funciones-group') updateHotWaterVisibility();
-        refreshSeqForStep(currentStep);
-        saveState();
-    });
-});
-
-// ======================== STAR RATING (Global) ========================
-document.querySelectorAll('.star-rating').forEach(sr => {
-    sr.querySelectorAll('span').forEach(star => {
-        star.addEventListener('click', () => {
-            const val = parseInt(star.dataset.val);
-            if (isNaN(val)) return;
-            sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= val));
-            const hid = document.getElementById(sr.dataset.id + '-val');
-            if (hid) hid.value = val;
-            saveState();
-        });
-    });
-});
 
 // ======================== DATE VALIDATION ========================
 function validateDates() {
@@ -1057,38 +1164,53 @@ function loadState(test) {
     if (d.estadoFinal) document.querySelector(`#estado-final-group .chip[data-value="${d.estadoFinal}"]`)?.classList.add('active');
 
     updateHotWaterVisibility();
+    updateGasDisclaimer();
 
     // Global stars
     const sv = parseInt(d['gas-calidad-val'] || 0);
     if (sv > 0) { const sr = document.querySelector('.star-rating[data-id="gas-calidad"]'); if (sr) sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= sv)); }
 
-    // LMC cells sequential restore
+    // Dynamic LMC cells sequential restore
     ['fria', 'gas', 'caliente'].forEach(prefix => {
-        for (let i = 0; i < 10; i++) {
+        let maxDataIdx = 9;
+        Object.keys(d).forEach(k => {
+            if (k.startsWith(`lmc-${prefix}-`)) {
+                const idx = parseInt(k.replace(`lmc-${prefix}-`, ''), 10);
+                if (!isNaN(idx) && d[k] !== undefined && String(d[k]).trim() !== '') {
+                    if (idx > maxDataIdx) maxDataIdx = idx;
+                }
+            }
+        });
+
+        ensureLmcColumn(prefix, maxDataIdx + 1);
+
+        for (let i = 0; i <= maxDataIdx + 1; i++) {
             const inp = document.getElementById(`lmc-${prefix}-${i}`);
             if (!inp) continue;
             const val = d[`lmc-${prefix}-${i}`];
-            if (val !== undefined && val !== '') {
-                inp.value = val; inp.disabled = false; inp.classList.remove('lmc-seq-locked');
+            if (val !== undefined && String(val).trim() !== '') {
+                inp.value = val;
+                inp.disabled = false;
+                inp.classList.remove('lmc-seq-locked');
                 validateLmcCell(inp);
-                // Unlock next cell
-                const next = document.getElementById(`lmc-${prefix}-${i + 1}`);
-                if (next) { next.disabled = false; next.classList.remove('lmc-seq-locked'); }
-                // Unlock gas quality
+                
+                const outOfRange = shouldLockNext(prefix, parseFloat(val));
+                if (!outOfRange) {
+                    const next = document.getElementById(`lmc-${prefix}-${i + 1}`);
+                    if (next) { next.disabled = false; next.classList.remove('lmc-seq-locked'); }
+                }
+
                 if (prefix === 'gas') {
                     const qCell = document.querySelector(`[data-gas-q-idx="${i}"]`);
                     if (qCell) {
                         qCell.classList.remove('lmc-seq-locked');
                         const qVal = d[`gas-q-${i}`] || '0';
-                        // Keep backwards compatibility if an old state has '1'-'5' stars saved
-                        const isOldStarVal = ['1','2','3','4','5'].includes(qVal);
                         let finalVal = qVal;
-                        if (isOldStarVal) {
+                        if (['1','2','3','4','5'].includes(qVal)) {
                             if (qVal >= '4') finalVal = 'Bueno';
                             else if (qVal === '3') finalVal = 'Medio';
                             else finalVal = 'Malo';
                         }
-                        
                         const sel = document.getElementById(`gas-q-${i}`);
                         if (sel) {
                             sel.disabled = false;
@@ -1106,18 +1228,16 @@ function loadState(test) {
         if (extVal !== undefined && extVal !== '') {
             const input = document.getElementById(`extraccion-${prefix}`);
             if (input) input.value = extVal;
-            const ms = parseFloat(extVal) * 60000;
-            if (!isNaN(ms)) {
-                stopwatches[prefix].elapsedMs = ms;
-                updateStopwatchDisplay(prefix);
-            }
+            const totalSec = parseMMSS(extVal);
+            stopwatches[prefix].elapsedMs = totalSec * 1000;
+            updateStopwatchDisplay(prefix);
         }
         updateCycleDisplay(prefix);
     });
 
     updateMachetes();
     validateDates();
-    refreshStep2Checklist();
+    refreshStep4Checklist();
 }
 
 // ======================== GLOBAL INPUT WATCHER ========================
@@ -1154,10 +1274,16 @@ function init() {
         applyTheme(newTheme);
     });
 
-    buildLmcInputs('lmc-fria-inputs', 'fria', 'fria');
-    buildLmcInputs('lmc-gas-inputs', 'gas', 'fria');
-    buildLmcInputs('lmc-caliente-inputs', 'caliente', 'caliente');
-    buildGasQualityRow('lmc-gas-quality-row');
+    buildInitialLmc('lmc-fria-inputs', 'fria', 'fria');
+    buildInitialLmc('lmc-gas-inputs', 'gas', 'fria');
+    buildInitialLmc('lmc-caliente-inputs', 'caliente', 'caliente');
+
+    // Manual Add Column buttons
+    document.getElementById('btn-add-lmc-fria')?.addEventListener('click', () => manualAddLmcColumn('fria'));
+    document.getElementById('btn-add-lmc-gas')?.addEventListener('click', () => manualAddLmcColumn('gas'));
+    document.getElementById('btn-add-lmc-caliente')?.addEventListener('click', () => manualAddLmcColumn('caliente'));
+
+    setupTimeInputMasks();
     loadDatalists();
     setupHubListeners();
     renderHub();
@@ -1268,7 +1394,24 @@ function setupHubListeners() {
         const test = getTest(reportId);
         if(!test || !test.data) return;
         
-        const labels = ['0.5L', '1.0L', '1.5L', '2.0L', '2.5L', '3.0L', '3.5L', '4.0L', '4.5L', '5.0L'];
+        let maxIdx = 9;
+        if (metric.startsWith('lmc-')) {
+            const type = metric.replace('lmc-', '');
+            Object.keys(test.data).forEach(k => {
+                if (k.startsWith(`lmc-${type}-`)) {
+                    const idx = parseInt(k.replace(`lmc-${type}-`, ''), 10);
+                    if (!isNaN(idx) && test.data[k] !== undefined && String(test.data[k]).trim() !== '') {
+                        if (idx > maxIdx) maxIdx = idx;
+                    }
+                }
+            });
+        }
+        
+        const labels = Array.from({ length: maxIdx + 1 }, (_, i) => `${((i + 1) * 0.5).toFixed(1)}L`);
+        if (labels.length > (performanceChartInstance.data.labels?.length || 0)) {
+            performanceChartInstance.data.labels = labels;
+        }
+
         let measuredData = [];
         let datasetLabel = '';
         

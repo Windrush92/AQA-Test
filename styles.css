@@ -494,6 +494,13 @@ textarea { resize: vertical; min-height: 80px; }
 .lmc-input:disabled { opacity: 0.3; cursor: not-allowed; }
 .lmc-input.lmc-seq-locked { opacity: 0.25; }
 
+.time-input {
+    text-align: center;
+    font-family: monospace, inherit;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+}
+
 /* ===== GAS QUALITY ROW ===== */
 .lmc-quality-row { border-top: 2px dashed var(--border); background: rgba(245,158,11,0.04); }
 .lmc-quality-cell { display: flex; align-items: center; justify-content: center; padding: 3px; transition: opacity 0.25s; }
