@@ -54,7 +54,9 @@ function upsertTest(test) {
 }
 
 function removeTest(id) {
-    saveAllTests(getAllTests().filter(t => t.id !== id));
+    const remaining = getAllTests().filter(t => t.id !== id);
+    saveAllTests(remaining);
+    renderHub(false);
     const sb = getSupabase();
     if (sb) {
         sb.from('tests').delete().eq('id', id).then(({ error }) => {
@@ -86,11 +88,16 @@ async function syncTestsFromCloud() {
                 currentStep: row.current_step,
                 data: row.data || {}
             }));
-            saveAllTests(mapped);
-            
-            const hubView = document.getElementById('view-hub');
-            if (hubView && !hubView.classList.contains('hidden')) {
-                renderHub(false);
+
+            // Only update local storage and re-render if data has actually changed
+            const currentLocalStr = localStorage.getItem(STORAGE_KEY) || '[]';
+            const newCloudStr = JSON.stringify(mapped);
+            if (currentLocalStr !== newCloudStr) {
+                saveAllTests(mapped);
+                const hubView = document.getElementById('view-hub');
+                if (hubView && !hubView.classList.contains('hidden')) {
+                    renderHub(false);
+                }
             }
         }
     } catch (e) {
@@ -228,7 +235,7 @@ window.generatePdfForTest = function (id) {
 };
 window.confirmDelete = function (id) {
     if (confirm('¿Seguro que querés eliminar este testeo? Esta acción no se puede deshacer.')) {
-        removeTest(id); renderHub();
+        removeTest(id);
     }
 };
 
@@ -282,15 +289,18 @@ function startWizard() {
     if (!test) return;
 
     // Reset all DOM inputs
-    document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id]').forEach(el => {
+    document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id], #view-wizard select[id]').forEach(el => {
         if (el.type === 'checkbox') el.checked = false;
+        else if (el.tagName === 'SELECT') el.value = el.options[0]?.value || '0';
         else el.value = '';
         el.style.borderColor = '';
         el.style.background = '';
         el.style.color = '';
     });
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.star-rating span, .mini-star').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.star-rating span').forEach(s => s.classList.remove('active'));
+    const hidGasStars = document.getElementById('gas-calidad-val');
+    if (hidGasStars) hidGasStars.value = '0';
 
     // Reset LMC cells
     for (let i = 0; i < 10; i++) {
@@ -301,11 +311,9 @@ function startWizard() {
         const qCell = document.querySelector(`[data-gas-q-idx="${i}"]`);
         if (qCell) {
             qCell.classList.add('lmc-seq-locked');
-            const btn = qCell.querySelector('.btn-gas-q');
-            if (btn) { btn.dataset.state = '0'; btn.textContent = '➖'; }
+            const sel = document.getElementById(`gas-q-${i}`);
+            if (sel) { sel.value = '0'; sel.disabled = true; }
         }
-        const qInp = document.getElementById(`gas-q-${i}`);
-        if (qInp) qInp.value = '0';
     }
 
     // Reset cycles and stopwatches
@@ -928,7 +936,7 @@ window.saveState = function () {
     test.currentStep = currentStep;
     const d = test.data || {};
 
-    document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id]').forEach(el => {
+    document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id], #view-wizard select[id]').forEach(el => {
         if (el.type === 'checkbox') d[el.id] = el.checked;
         else d[el.id] = el.value;
     });
@@ -951,7 +959,7 @@ function loadState(test) {
     const d = test.data || {};
     currentStep = test.currentStep || 1;
 
-    document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id]').forEach(el => {
+    document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id], #view-wizard select[id]').forEach(el => {
         if (d[el.id] === undefined) return;
         if (el.type === 'checkbox') { el.checked = !!d[el.id]; el.dispatchEvent(new Event('change')); }
         else el.value = d[el.id];
@@ -995,14 +1003,10 @@ function loadState(test) {
                             else finalVal = 'Malo';
                         }
                         
-                        const EMOJIS = { '0': '➖', 'Bueno': '🟢', 'Medio': '🟡', 'Malo': '🔴' };
-                        const STATES = { '0': 0, 'Bueno': 1, 'Medio': 2, 'Malo': 3 };
-                        
-                        const btn = qCell.querySelector('.btn-gas-q');
-                        if (btn && EMOJIS[finalVal]) {
-                            btn.dataset.state = STATES[finalVal];
-                            btn.textContent = EMOJIS[finalVal];
-                            document.getElementById(`gas-q-${i}`).value = finalVal;
+                        const sel = document.getElementById(`gas-q-${i}`);
+                        if (sel) {
+                            sel.disabled = false;
+                            sel.value = finalVal;
                         }
                     }
                 }
