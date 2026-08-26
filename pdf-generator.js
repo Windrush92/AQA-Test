@@ -22,9 +22,35 @@ window.buildReportHTML = function(data, test) {
         ? `${v('capacidad-tanque')} L — Llenado: ${v('tiempo-llenado-tanque')} min`
         : 'No tiene';
 
-    const completedDate = test?.completedAt
-        ? new Date(test.completedAt).toLocaleDateString('es-AR')
-        : '-';
+    function formatDateDDMMAAAA(val) {
+        if (!val) return '—';
+        if (val instanceof Date) {
+            const d = String(val.getDate()).padStart(2, '0');
+            const m = String(val.getMonth() + 1).padStart(2, '0');
+            const y = val.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+        const str = String(val).trim();
+        if (!str || str === '-') return '—';
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+            const [y, m, d] = str.split('T')[0].split('-');
+            return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+        }
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+            const [d, m, y] = str.split('/');
+            return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+        }
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) {
+            const d = String(parsed.getDate()).padStart(2, '0');
+            const m = String(parsed.getMonth() + 1).padStart(2, '0');
+            const y = parsed.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+        return str;
+    }
+
+    const completedDate = formatDateDDMMAAAA(test?.completedAt || d['fecha-fin-testeo']);
     const estadoFinal = d.estadoFinal || 'NO DEFINIDO';
     const estadoColor = estadoFinal === 'Aprobado' ? '#059669' : '#dc2626';
 
@@ -165,7 +191,7 @@ window.buildReportHTML = function(data, test) {
         <h1>Reporte Técnico de Equipo</h1>
         <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:0.35rem;font-size:0.85rem">
             <span><strong>Técnico:</strong> ${v('tecnico')}</span>
-            <span><strong>Fecha de Testeo:</strong> ${v('fecha-testeo')}</span>
+            <span><strong>Fecha de Testeo:</strong> ${formatDateDDMMAAAA(d['fecha-testeo'])}</span>
             <span><strong>Fecha de Fin:</strong> ${completedDate}</span>
             <span style="font-size:0.95rem;font-weight:700;color:${estadoColor}">Estado: ${estadoFinal.toUpperCase()}</span>
         </div>
@@ -177,7 +203,7 @@ window.buildReportHTML = function(data, test) {
             <div><strong>Marca:</strong> ${v('marca')}</div>
             <div><strong>Modelo:</strong> ${v('modelo')}</div>
             ${d['numero-serie'] ? `<div><strong>Nº de Serie:</strong> ${v('numero-serie')}</div>` : ''}
-            <div><strong>Fecha de Ingreso:</strong> ${v('fecha-ingreso')}</div>
+            <div><strong>Fecha de Ingreso:</strong> ${formatDateDDMMAAAA(d['fecha-ingreso'])}</div>
             <div><strong>Cañerías:</strong> ${(d.canerias || []).join(', ') || '-'}</div>
             <div><strong>Funciones:</strong> ${(d.funciones || []).join(', ') || '-'}</div>
             <div><strong>Rendimiento:</strong> ${v('rendimiento')} L/h</div>

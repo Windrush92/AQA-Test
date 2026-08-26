@@ -87,6 +87,34 @@ function markIdDeleted(id) {
     localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(ids)));
 }
 
+function formatDateDDMMAAAA(val) {
+    if (!val) return '—';
+    if (val instanceof Date) {
+        const d = String(val.getDate()).padStart(2, '0');
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const y = val.getFullYear();
+        return `${d}/${m}/${y}`;
+    }
+    const str = String(val).trim();
+    if (!str || str === '-') return '—';
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const [y, m, d] = str.split('T')[0].split('-');
+        return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+        const [d, m, y] = str.split('/');
+        return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+    }
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+        const d = String(parsed.getDate()).padStart(2, '0');
+        const m = String(parsed.getMonth() + 1).padStart(2, '0');
+        const y = parsed.getFullYear();
+        return `${d}/${m}/${y}`;
+    }
+    return str;
+}
+
 function getAllTests() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
 function saveAllTests(tests) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tests)); }
 function getTest(id) { return getAllTests().find(t => t.id === id) || null; }
@@ -249,10 +277,12 @@ function renderHub(fetchCloud = true) {
         const isDraft = test.status === 'draft';
         const marca = test.data?.marca || 'Sin marca';
         const modelo = test.data?.modelo || 'Sin modelo';
+        const numeroSerie = test.data?.['numero-serie'] || '—';
         const tecnico = test.data?.tecnico || '—';
-        const fechaTesteo = test.data?.['fecha-testeo'] || '—';
-        const fechaFin = test.completedAt ? new Date(test.completedAt).toLocaleDateString('es-AR') : null;
-        const createdAt = new Date(test.createdAt).toLocaleDateString('es-AR');
+        const fechaTesteo = formatDateDDMMAAAA(test.data?.['fecha-testeo']);
+        const fechaFin = test.completedAt 
+            ? formatDateDDMMAAAA(test.completedAt) 
+            : (test.data?.['fecha-fin-testeo'] ? formatDateDDMMAAAA(test.data?.['fecha-fin-testeo']) : '—');
         return `
         <div class="test-card ${isDraft ? 'draft' : 'completed'}">
             <div class="tc-header">
@@ -266,16 +296,20 @@ function renderHub(fetchCloud = true) {
             
             <div class="tc-body">
                 <div class="tc-detail">
+                    <span class="tc-label">Nº de Serie</span>
+                    <span class="tc-value">${numeroSerie}</span>
+                </div>
+                <div class="tc-detail">
                     <span class="tc-label">Técnico</span>
                     <span class="tc-value">${tecnico}</span>
                 </div>
                 <div class="tc-detail">
-                    <span class="tc-label">Testeo</span>
+                    <span class="tc-label">Inicio Testeo</span>
                     <span class="tc-value">${fechaTesteo}</span>
                 </div>
                 <div class="tc-detail">
-                    <span class="tc-label">${fechaFin ? 'Finalizado' : 'Creado'}</span>
-                    <span class="tc-value">${fechaFin ? fechaFin : createdAt}</span>
+                    <span class="tc-label">Fin Testeo</span>
+                    <span class="tc-value">${fechaFin}</span>
                 </div>
             </div>
 
@@ -1291,7 +1325,7 @@ function populateChartReports() {
     select.innerHTML = '<option value="">-- Elegir Testeo --</option>' + tests.map(t => {
         const marca = t.data?.marca || 'Sin marca';
         const modelo = t.data?.modelo || 'Sin modelo';
-        const date = t.completedAt ? new Date(t.completedAt).toLocaleDateString('es-AR') : '';
+        const date = t.completedAt ? formatDateDDMMAAAA(t.completedAt) : '';
         return `<option value="${t.id}">${marca} ${modelo} (${date})</option>`;
     }).join('');
 }
