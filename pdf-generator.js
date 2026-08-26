@@ -129,15 +129,17 @@ window.buildReportHTML = function(data, test) {
             cph = Math.ceil(cph * 1.15);
         }
 
-        const extLabel = prefix === 'gas' ? 'Tiempo Extracción (hasta agotar mezclador)' : 'Tiempo Extracción';
-        const recLabel = prefix === 'gas' ? 'Tiempo Recuperación (recarga del gasatore)' : 'Tiempo Recuperación';
+        const extSub = prefix === 'gas' ? ' <small style="color:#64748b;font-weight:400;">(hasta agotar mezclador)</small>' : '';
+        const recSub = prefix === 'gas' ? ' <small style="color:#64748b;font-weight:400;">(recarga del gasatore)</small>' : '';
 
         return `
-        <div class="print-grid cycle-summary-box" style="margin-top:0.35rem; background:#f8fafc; padding:0.45rem 0.65rem; border-radius:6px; border-left: 3px solid var(--primary); font-size:0.8rem;">
-            <div><strong>${extLabel}:</strong> ${formatMMSS(extSec)} min</div>
-            <div><strong>${recLabel}:</strong> ${formatMMSS(recSec)} min</div>
-            <div><strong>Tiempo Total Ciclo:</strong> ${formatMMSS(totalSec)} min</div>
-            <div style="font-size: 0.88rem; color: var(--primary); grid-column: 1 / -1; margin-top: 0.1rem;"><strong>Rendimiento Estimado:</strong> ${cph > 0 ? cph : '-'} Ciclos/Hora</div>
+        <div class="cycle-summary-box" style="margin-top:0.35rem; background:#f8fafc; padding:0.45rem 0.65rem; border-radius:6px; border-left: 3px solid var(--primary); font-size:0.8rem;">
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem 1.25rem; margin-bottom:0.25rem;">
+                <div><strong>Tiempo Extracción:</strong> ${formatMMSS(extSec)} min${extSub}</div>
+                <div><strong>Tiempo Recuperación:</strong> ${formatMMSS(recSec)} min${recSub}</div>
+                <div><strong>Tiempo Total Ciclo:</strong> ${formatMMSS(totalSec)} min</div>
+            </div>
+            <div style="font-size: 0.88rem; color: var(--primary); margin-top: 0.15rem;"><strong>Rendimiento Estimado:</strong> ${cph > 0 ? cph : '-'} Ciclos/Hora</div>
         </div>
         `;
     }
