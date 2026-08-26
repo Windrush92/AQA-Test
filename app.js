@@ -1185,6 +1185,75 @@ function init() {
         });
     });
 
+    // Chip Groups (Multi-select and Single-select like #estado-final-group)
+    document.querySelectorAll('.chip-group').forEach(group => {
+        group.addEventListener('click', e => {
+            const chip = e.target.closest('.chip');
+            if (!chip) return;
+
+            if (group.classList.contains('single-select')) {
+                group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+            } else {
+                chip.classList.toggle('active');
+                if (group.id === 'funciones-group') {
+                    updateHotWaterVisibility();
+                    updateGasDisclaimer();
+                }
+            }
+            refreshSeqForStep(currentStep);
+            saveState();
+        });
+    });
+
+    // Star Rating
+    document.querySelectorAll('.star-rating').forEach(rating => {
+        const hiddenInput = document.getElementById(`${rating.dataset.id}-val`);
+        rating.addEventListener('click', e => {
+            const star = e.target.closest('span');
+            if (!star) return;
+            const val = parseInt(star.dataset.val, 10);
+            if (hiddenInput) hiddenInput.value = val;
+            rating.querySelectorAll('span').forEach(s => {
+                s.classList.toggle('active', parseInt(s.dataset.val, 10) <= val);
+            });
+            refreshSeqForStep(currentStep);
+            saveState();
+        });
+    });
+
+    // Stopwatch event listeners
+    ['fria', 'gas', 'caliente'].forEach(type => {
+        const btnStart = document.getElementById(`btn-sw-start-${type}`);
+        const btnStop = document.getElementById(`btn-sw-stop-${type}`);
+        const btnReset = document.getElementById(`btn-sw-reset-${type}`);
+
+        btnStart?.addEventListener('click', () => {
+            if (stopwatches[type].interval) return;
+            stopwatches[type].startTime = Date.now();
+            stopwatches[type].interval = setInterval(() => updateStopwatchDisplay(type), 1000);
+        });
+
+        btnStop?.addEventListener('click', () => {
+            if (!stopwatches[type].interval) return;
+            clearInterval(stopwatches[type].interval);
+            stopwatches[type].interval = null;
+            stopwatches[type].elapsedMs += (Date.now() - stopwatches[type].startTime);
+            updateStopwatchDisplay(type);
+            saveState();
+        });
+
+        btnReset?.addEventListener('click', () => {
+            if (stopwatches[type].interval) {
+                clearInterval(stopwatches[type].interval);
+                stopwatches[type].interval = null;
+            }
+            stopwatches[type].elapsedMs = 0;
+            updateStopwatchDisplay(type);
+            saveState();
+        });
+    });
+
     setupTimeInputMasks();
     loadDatalists();
     setupHubListeners();
