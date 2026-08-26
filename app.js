@@ -250,12 +250,42 @@ function renderHub(fetchCloud = true) {
         initChart();
     }
     
-    // Apply Filters
+    // Apply Filters across all possible factors
     if (currentSearchTerm) {
+        const q = currentSearchTerm.toLowerCase().trim();
         tests = tests.filter(t => {
-            const m = t.data?.modelo?.toLowerCase() || '';
-            const tech = t.data?.tecnico?.toLowerCase() || '';
-            return m.includes(currentSearchTerm) || tech.includes(currentSearchTerm);
+            const d = t.data || {};
+            const marca = (d.marca || '').toLowerCase();
+            const modelo = (d.modelo || '').toLowerCase();
+            const serie = (d['numero-serie'] || '').toLowerCase();
+            const tecnico = (d.tecnico || '').toLowerCase();
+            const obs = (d.observaciones || '').toLowerCase();
+            const estado = (d.estadoFinal || '').toLowerCase();
+            const statusTxt = t.status === 'completed' ? 'finalizado aprobado rechazado' : 'en progreso draft';
+            const funciones = Array.isArray(d.funciones) ? d.funciones.join(' ').toLowerCase() : '';
+            const canerias = Array.isArray(d.canerias) ? d.canerias.join(' ').toLowerCase() : '';
+            
+            // Raw & formatted dates
+            const fTesteoRaw = (d['fecha-testeo'] || '').toLowerCase();
+            const fTesteoFmt = formatDateDDMMAAAA(d['fecha-testeo']).toLowerCase();
+            const fIngresoRaw = (d['fecha-ingreso'] || '').toLowerCase();
+            const fIngresoFmt = formatDateDDMMAAAA(d['fecha-ingreso']).toLowerCase();
+            const fFinFmt = formatDateDDMMAAAA(t.completedAt || d['fecha-fin-testeo']).toLowerCase();
+
+            return marca.includes(q) ||
+                   modelo.includes(q) ||
+                   serie.includes(q) ||
+                   tecnico.includes(q) ||
+                   obs.includes(q) ||
+                   estado.includes(q) ||
+                   statusTxt.includes(q) ||
+                   funciones.includes(q) ||
+                   canerias.includes(q) ||
+                   fTesteoRaw.includes(q) ||
+                   fTesteoFmt.includes(q) ||
+                   fIngresoRaw.includes(q) ||
+                   fIngresoFmt.includes(q) ||
+                   fFinFmt.includes(q);
         });
     }
 
