@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aqa-test-v7';
+const CACHE_NAME = 'aqa-test-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

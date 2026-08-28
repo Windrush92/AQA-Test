@@ -351,46 +351,75 @@ function renderHub(fetchCloud = true) {
         const fechaFin = test.completedAt 
             ? formatDateDDMMAAAA(test.completedAt) 
             : (test.data?.['fecha-fin-testeo'] ? formatDateDDMMAAAA(test.data?.['fecha-fin-testeo']) : '—');
+        
+        // Functions tags
+        const funciones = Array.isArray(test.data?.funciones) ? test.data.funciones : [];
+        const featTags = funciones.map(f => {
+            let icon = '💧';
+            if (f.includes('Gas') || f.includes('gas')) icon = '🫧';
+            else if (f.includes('Caliente') || f.includes('caliente')) icon = '🔥';
+            return `<span class="tc-feat-tag">${icon} ${f}</span>`;
+        }).join('');
+
         return `
         <div class="test-card ${isDraft ? 'draft' : 'completed'}">
-            <div class="tc-header">
-                <div class="tc-icon"><div class="status-dot ${isDraft ? 'dot-draft' : 'dot-done'}"></div></div>
-                <div class="tc-title">
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <h3 class="tc-marca">${marca}</h3>
-                        <span style="font-size:0.75rem; font-weight:700; background:var(--surface-2); color:var(--primary); padding:0.1rem 0.4rem; border-radius:4px;">${regNumber}</span>
-                    </div>
-                    <span class="tc-modelo">${modelo}</span>
+            <!-- Top Bar: Reg Badge + Status -->
+            <div class="tc-top-bar">
+                <div class="tc-reg-pill">
+                    <span class="tc-reg-hash">#</span>${regNumber}
                 </div>
-                <div class="tc-badge ${isDraft ? 'badge-draft' : 'badge-done'}">${isDraft ? 'En Progreso' : 'Finalizado'}</div>
-            </div>
-            
-            <div class="tc-body">
-                <div class="tc-detail">
-                    <span class="tc-label">Nº de Serie</span>
-                    <span class="tc-value">${numeroSerie}</span>
-                </div>
-                <div class="tc-detail">
-                    <span class="tc-label">Técnico</span>
-                    <span class="tc-value">${tecnico}</span>
-                </div>
-                <div class="tc-detail">
-                    <span class="tc-label">Inicio Testeo</span>
-                    <span class="tc-value">${fechaTesteo}</span>
-                </div>
-                <div class="tc-detail">
-                    <span class="tc-label">Fin Testeo</span>
-                    <span class="tc-value">${fechaFin}</span>
+                <div class="tc-status-pill ${isDraft ? 'status-draft' : 'status-done'}">
+                    <span class="tc-status-dot"></span>
+                    ${isDraft ? 'En Progreso' : 'Finalizado'}
                 </div>
             </div>
 
+            <!-- Machine Avatar + Title -->
+            <div class="tc-machine-header">
+                <div class="tc-machine-avatar">💧</div>
+                <div class="tc-title-block">
+                    <h3 class="tc-marca">${marca}</h3>
+                    <span class="tc-modelo">${modelo}</span>
+                </div>
+            </div>
+            
+            <!-- Body Information Grid -->
+            <div class="tc-body">
+                <div class="tc-meta-row">
+                    <div class="tc-meta-card">
+                        <span class="tc-meta-lbl">🏷️ Nº DE SERIE</span>
+                        <span class="tc-meta-val val-mono" title="${numeroSerie}">${numeroSerie}</span>
+                    </div>
+                    <div class="tc-meta-card">
+                        <span class="tc-meta-lbl">👤 TÉCNICO</span>
+                        <span class="tc-meta-val" title="${tecnico}">${tecnico}</span>
+                    </div>
+                </div>
+
+                <!-- Date timeline strip -->
+                <div class="tc-date-strip">
+                    <div class="tc-date-item">
+                        <span class="tc-date-lbl">Inicio Testeo</span>
+                        <span class="tc-date-val">${fechaTesteo}</span>
+                    </div>
+                    <span class="tc-date-arrow">➔</span>
+                    <div class="tc-date-item" style="text-align:right;">
+                        <span class="tc-date-lbl">Fin Testeo</span>
+                        <span class="tc-date-val">${fechaFin}</span>
+                    </div>
+                </div>
+
+                ${featTags ? `<div class="tc-features-wrap">${featTags}</div>` : ''}
+            </div>
+
+            <!-- Footer Actions -->
             <div class="tc-footer">
                 ${isDraft 
-                    ? `<button class="btn btn-primary btn-sm" onclick="continueTest('${test.id}')">▶ Continuar</button>`
-                    : `<button class="btn btn-outline btn-sm" onclick="viewReportHub('${test.id}')">📄 Ver Informe</button>
-                       <button class="btn btn-outline btn-sm" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>`
+                    ? `<button class="btn btn-primary" onclick="continueTest('${test.id}')">▶ Continuar Testeo</button>`
+                    : `<button class="btn btn-outline" onclick="viewReportHub('${test.id}')">📄 Ver Informe</button>
+                       <button class="btn btn-secondary" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>`
                 }
-                <button class="btn btn-danger btn-sm" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)">🗑️</button>
+                <button class="btn-danger-ghost" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)">🗑️</button>
             </div>
         </div>
         `;
