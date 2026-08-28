@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="AQA-Test">
     <link rel="apple-touch-icon" href="logo-aqa.png">
     <link rel="icon" type="image/png" href="logo-aqa.png">
-    <link rel="stylesheet" href="styles.css?v=2.3">
+    <link rel="stylesheet" href="styles.css?v=2.5">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -168,6 +168,10 @@
             <div class="seq-section" data-seq="1" data-seq-step="1">
                 <div class="form-grid">
                     <div class="input-group">
+                        <label>Nº de Registro</label>
+                        <input type="text" id="reg-number" placeholder="Generado automáticamente" readonly style="background: var(--surface-2); font-weight: 700; color: var(--primary);">
+                    </div>
+                    <div class="input-group">
                         <label>Técnico Evaluador <span class="req">*</span></label>
                         <input type="text" id="tecnico" placeholder="Nombre completo">
                     </div>
@@ -321,6 +325,13 @@
                         </div>
                     </div>
                     <div class="input-group">
+                        <label>Presión de Entrada de Agua <span class="req">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="number" id="presion-agua-entrada" placeholder="0" step="0.5">
+                            <span class="unit-suffix">PSI</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
                         <label>Presión de CO2 <small class="hint">*Con tubo lleno*</small></label>
                         <div class="input-wrapper">
                             <input type="number" id="presion-co2-medida" placeholder="0" step="0.1">
@@ -331,11 +342,6 @@
             </div>
             <div class="seq-section seq-locked" data-seq="2" data-seq-step="2">
                 <div class="checklist-container mt-1">
-                    <label class="checklist-item">
-                        <input type="checkbox" id="chk-presion-20psi">
-                        <span class="checkmark"></span>
-                        <span class="text">Presión de entrada de agua: Mínimo 20 PSI</span>
-                    </label>
                     <label class="checklist-item">
                         <input type="checkbox" id="chk-ventilacion">
                         <span class="checkmark"></span>
@@ -409,21 +415,24 @@
             </div>
             <div class="seq-section seq-locked" data-seq="2" data-seq-step="3">
                 <div class="section-title mt-2">Tiempo de Llenado de Botella (500ml)</div>
-                <div class="alert-box info mb-1">
-                    💧 Referencia: <strong>Presión de entrada de agua: Mínimo 20 PSI</strong>
+                <div class="alert-box info mb-1" id="presion-entrada-ref-box">
+                    💧 Referencia: <strong>Presión de entrada de agua registrada: <span id="machete-presion-entrada">--</span> PSI</strong>
                 </div>
                 <div class="form-grid">
                     <div class="input-group">
                         <label>Agua Fría (500ml)</label>
                         <div class="input-wrapper"><input type="text" id="tiempo-500-fria" placeholder="mm:ss" maxlength="5" class="time-input"><span class="unit-suffix">min</span></div>
+                        <div class="caudal-badge" id="caudal-500-fria" style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-top:0.25rem; display:none;"></div>
                     </div>
                     <div class="input-group" id="grp-500-caliente">
                         <label>Agua Caliente (500ml)</label>
                         <div class="input-wrapper"><input type="text" id="tiempo-500-caliente" placeholder="mm:ss" maxlength="5" class="time-input"><span class="unit-suffix">min</span></div>
+                        <div class="caudal-badge" id="caudal-500-caliente" style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-top:0.25rem; display:none;"></div>
                     </div>
-                    <div class="input-group">
+                    <div class="input-group" id="grp-500-gas">
                         <label>Agua Con Gas (500ml)</label>
                         <div class="input-wrapper"><input type="text" id="tiempo-500-gas" placeholder="mm:ss" maxlength="5" class="time-input"><span class="unit-suffix">min</span></div>
+                        <div class="caudal-badge" id="caudal-500-gas" style="font-size:0.75rem; color:var(--primary); font-weight:700; margin-top:0.25rem; display:none;"></div>
                     </div>
                 </div>
             </div>
@@ -547,8 +556,16 @@
                 <div class="section-title">Tiempo de Recuperación — Agua Fría</div>
                 <div class="recovery-box">
                     <label>¿Cuánto tiempo tarda el equipo en recuperarse de dispensar continuamente en el rango de temperatura informado por el proveedor?</label>
+                    <div class="stopwatch-container mb-2 mt-1" style="background:var(--bg-base); padding:0.6rem; border-radius:8px;">
+                        <div class="stopwatch-display" id="sw-display-rec-fria" style="font-size:1.4rem; padding:0.3rem 0.8rem;">00:00</div>
+                        <div class="stopwatch-controls">
+                            <button type="button" class="btn btn-primary btn-sm" id="btn-sw-start-rec-fria">▶ Iniciar</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btn-sw-stop-rec-fria">⏹ Detener (Corte Motor)</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-sw-reset-rec-fria">🔄 Reiniciar</button>
+                        </div>
+                    </div>
                     <div class="input-wrapper recovery-input">
-                        <input type="text" id="recuperacion-fria" placeholder="mm:ss" maxlength="5" class="time-input">
+                        <input type="text" id="recuperacion-fria" placeholder="mm:ss" maxlength="8" class="time-input">
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
@@ -556,6 +573,7 @@
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
                     <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-fria">00:00</span> min</p>
                     <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--primary);"><strong>Rendimiento Estimado:</strong> <span id="cycle-cph-fria">0</span> ciclos/hora</p>
+                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--success); font-weight: 700;"><strong>Litros de esta función por hora:</strong> <span id="cycle-lph-fria">0</span> L/h</p>
                 </div>
             </div>
         </section>
@@ -563,18 +581,18 @@
         <section class="wizard-step" id="step-6" data-step="6">
             <div class="step-header">
                 <h2>5. LMC</h2>
-                <h3 style="margin-top: 0.5rem; color: var(--primary);">5.2 Agua con Gas</h3>
+                <h3 style="margin-top: 0.5rem; color: var(--primary);">5.2 Agua con Gas (Hasta agotar mezcla del gasificador)</h3>
             </div>
             
             <div class="seq-section mt-2">
-                <div class="section-title">Tiempo de Extracción — Agua con Gas</div>
+                <div class="section-title">Tiempo de Extracción — Agua con Gas (Hasta agotar mezcla del gasificador)</div>
                 <div class="stopwatch-container mb-2">
                     <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
                         <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem; line-height: 1.5;">
                             <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
                             <li>Extraer agua con gas de forma continua de a 0.5L, ingresando la temperatura y seleccionando la <strong>calidad del gas</strong> en cada toma. Presionar <strong>Enter</strong> para registrar.</li>
-                            <li>Cuando el mezclador (gasatore) se quede sin agua y <strong>solo tire GAS</strong>, detener la extracción presionando el botón <strong>⏹ Detener</strong>.</li>
-                            <li>Medir el <strong>Tiempo de Recuperación</strong> (tiempo en que el equipo carga nuevamente el gasatore/mezclador por completo).</li>
+                            <li>Cuando el mezclador (gasatore) se quede sin agua y <strong>solo tire GAS</strong> (hasta agotar mezcla del gasificador), detener la extracción presionando <strong>⏹ Detener</strong>.</li>
+                            <li>Al detener la extracción se iniciará automáticamente el cronómetro de recuperación hasta que el motor corte.</li>
                         </ul>
                         <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
                             <span>📋 Rango Temp. Fría: <strong id="machete-gas">--</strong> ºC</span>
@@ -643,8 +661,16 @@
                 <div class="section-title mt-2">Tiempo de Recuperación — Carga del Gasatore (Mezclador)</div>
                 <div class="recovery-box">
                     <label>¿Cuánto tiempo tarda el equipo en cargar nuevamente el gasatore (mezclador) por completo tras la extracción continua?</label>
+                    <div class="stopwatch-container mb-2 mt-1" style="background:var(--bg-base); padding:0.6rem; border-radius:8px;">
+                        <div class="stopwatch-display" id="sw-display-rec-gas" style="font-size:1.4rem; padding:0.3rem 0.8rem;">00:00</div>
+                        <div class="stopwatch-controls">
+                            <button type="button" class="btn btn-primary btn-sm" id="btn-sw-start-rec-gas">▶ Iniciar</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btn-sw-stop-rec-gas">⏹ Detener (Corte Motor)</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-sw-reset-rec-gas">🔄 Reiniciar</button>
+                        </div>
+                    </div>
                     <div class="input-wrapper recovery-input">
-                        <input type="text" id="recuperacion-gas" placeholder="mm:ss" maxlength="5" class="time-input">
+                        <input type="text" id="recuperacion-gas" placeholder="mm:ss" maxlength="8" class="time-input">
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
@@ -652,6 +678,7 @@
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
                     <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-gas">00:00</span> min</p>
                     <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--primary);"><strong>Rendimiento Estimado:</strong> <span id="cycle-cph-gas">0</span> ciclos/hora</p>
+                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--success); font-weight: 700;"><strong>Litros de esta función por hora:</strong> <span id="cycle-lph-gas">0</span> L/h</p>
                 </div>
 
                 <div class="section-title mt-2">Calidad Global de Gasificación</div>
@@ -677,6 +704,7 @@
                             <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
                             <li>Dispensar agua de forma continua de a 0.5L, ingresando la temperatura y presionando <strong>Enter</strong> en cada toma.</li>
                             <li>Cuando la temperatura descienda por debajo de la indicada por el proveedor, detener la extracción presionando <strong>⏹ Detener</strong>.</li>
+                            <li>Al detener la extracción se iniciará automáticamente el cronómetro de recuperación hasta que corte la resistencia.</li>
                         </ul>
                         <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
                             <span>📋 Rango Temp: <strong id="machete-caliente">--</strong> ºC</span>
@@ -737,8 +765,16 @@
                 <div class="section-title">Tiempo de Recuperación — Agua Caliente</div>
                 <div class="recovery-box">
                     <label>¿Cuánto tiempo tarda el equipo en recuperarse de dispensar continuamente en el rango de temperatura informado por el proveedor?</label>
+                    <div class="stopwatch-container mb-2 mt-1" style="background:var(--bg-base); padding:0.6rem; border-radius:8px;">
+                        <div class="stopwatch-display" id="sw-display-rec-caliente" style="font-size:1.4rem; padding:0.3rem 0.8rem;">00:00</div>
+                        <div class="stopwatch-controls">
+                            <button type="button" class="btn btn-primary btn-sm" id="btn-sw-start-rec-caliente">▶ Iniciar</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btn-sw-stop-rec-caliente">⏹ Detener (Corte Resistencia)</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-sw-reset-rec-caliente">🔄 Reiniciar</button>
+                        </div>
+                    </div>
                     <div class="input-wrapper recovery-input">
-                        <input type="text" id="recuperacion-caliente" placeholder="mm:ss" maxlength="5" class="time-input">
+                        <input type="text" id="recuperacion-caliente" placeholder="mm:ss" maxlength="8" class="time-input">
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
@@ -746,6 +782,7 @@
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
                     <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-caliente">00:00</span> min</p>
                     <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--primary);"><strong>Rendimiento Estimado:</strong> <span id="cycle-cph-caliente">0</span> ciclos/hora</p>
+                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--success); font-weight: 700;"><strong>Litros de esta función por hora:</strong> <span id="cycle-lph-caliente">0</span> L/h</p>
                 </div>
             </div>
         </section>
@@ -819,8 +856,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=2.3"></script>
-<script src="pdf-generator.js?v=2.3"></script>
+<script src="app.js?v=2.5"></script>
+<script src="pdf-generator.js?v=2.5"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

@@ -27,8 +27,8 @@ function getSupabase() {
     return supabaseClient;
 }
 
-// ======================== CUSTOM DIALOGS (Alert & Confirm) ========================
-function showCustomDialog({ title = 'AQA-Test', message, type = 'alert', confirmText = 'Aceptar', cancelText = 'Cancelar', isDanger = false }) {
+// ======================== CUSTOM DIALOGS (Alert, Confirm & Prompt) ========================
+function showCustomDialog({ title = 'AQA-Test', message, type = 'alert', confirmText = 'Aceptar', cancelText = 'Cancelar', isDanger = false, inputType = 'text', placeholder = '' }) {
     return new Promise((resolve) => {
         const overlay = document.getElementById('custom-dialog-overlay');
         const titleEl = document.getElementById('custom-dialog-title');
@@ -38,32 +38,56 @@ function showCustomDialog({ title = 'AQA-Test', message, type = 'alert', confirm
 
         if (!overlay || !titleEl || !bodyEl || !btnConfirm || !btnCancel) {
             if (type === 'confirm') resolve(window.confirm(message));
+            else if (type === 'prompt') resolve(window.prompt(message));
             else { window.alert(message); resolve(true); }
             return;
         }
 
         titleEl.textContent = title;
-        bodyEl.textContent = message;
+        if (type === 'prompt') {
+            bodyEl.innerHTML = `
+                <div style="margin-bottom:0.75rem; font-size:0.95rem;">${message}</div>
+                <input type="${inputType}" id="custom-dialog-input" placeholder="${placeholder}" style="width:100%; padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:1rem; box-sizing:border-box;" autocomplete="off">
+            `;
+        } else {
+            bodyEl.innerHTML = `<div style="font-size:0.95rem; line-height:1.5;">${message}</div>`;
+        }
         
         btnConfirm.textContent = confirmText;
         btnConfirm.className = `btn ${isDanger ? 'btn-danger' : 'btn-primary'}`;
         
-        if (type === 'confirm') {
+        if (type === 'confirm' || type === 'prompt') {
             btnCancel.textContent = cancelText;
             btnCancel.classList.remove('hidden');
+            btnCancel.style.display = 'inline-block';
         } else {
             btnCancel.classList.add('hidden');
+            btnCancel.style.display = 'none';
         }
+
+        const inputEl = document.getElementById('custom-dialog-input');
+        if (inputEl) {
+            setTimeout(() => inputEl.focus(), 50);
+        }
+
+        const handleKey = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                cleanup(type === 'prompt' ? (document.getElementById('custom-dialog-input')?.value || '') : true);
+            }
+        };
+        inputEl?.addEventListener('keydown', handleKey);
 
         const cleanup = (result) => {
             overlay.classList.add('hidden');
+            inputEl?.removeEventListener('keydown', handleKey);
             btnConfirm.onclick = null;
             btnCancel.onclick = null;
             resolve(result);
         };
 
-        btnConfirm.onclick = () => cleanup(true);
-        btnCancel.onclick = () => cleanup(false);
+        btnConfirm.onclick = () => cleanup(type === 'prompt' ? (document.getElementById('custom-dialog-input')?.value || '') : true);
+        btnCancel.onclick = () => cleanup(type === 'prompt' ? null : false);
 
         overlay.classList.remove('hidden');
     });
@@ -75,6 +99,10 @@ function customAlert(message, title = 'AQA-Test') {
 
 function customConfirm(message, title = 'AQA-Test', options = {}) {
     return showCustomDialog({ title, message, type: 'confirm', ...options });
+}
+
+function customPrompt(message, title = 'AQA-Test', options = {}) {
+    return showCustomDialog({ title, message, type: 'prompt', ...options });
 }
 
 // ======================== STORAGE HELPERS ========================
@@ -125,6 +153,12 @@ function upsertTest(test) {
         deletedSet.delete(test.id);
         localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(deletedSet)));
     }
+
+    if (!test.regNumber) {
+        test.regNumber = test.data?.regNumber || 'TEST-0001';
+    }
+    test.data = test.data || {};
+    test.data.regNumber = test.regNumber;
 
     const tests = getAllTests();
     const idx = tests.findIndex(t => t.id === test.id);
@@ -184,6 +218,7 @@ async function syncTestsFromCloud() {
                 .filter(row => row.status !== 'deleted' && !deletedSet.has(row.id))
                 .map(row => ({
                     id: row.id,
+                    regNumber: row.data?.regNumber || row.reg_number || 'TEST-0001',
                     status: row.status,
                     createdAt: row.created_at,
                     completedAt: row.completed_at,
@@ -255,6 +290,7 @@ function renderHub(fetchCloud = true) {
         const q = currentSearchTerm.toLowerCase().trim();
         tests = tests.filter(t => {
             const d = t.data || {};
+            const reg = (t.regNumber || d.regNumber || '').toLowerCase();
             const marca = (d.marca || '').toLowerCase();
             const modelo = (d.modelo || '').toLowerCase();
             const serie = (d['numero-serie'] || '').toLowerCase();
@@ -272,7 +308,8 @@ function renderHub(fetchCloud = true) {
             const fIngresoFmt = formatDateDDMMAAAA(d['fecha-ingreso']).toLowerCase();
             const fFinFmt = formatDateDDMMAAAA(t.completedAt || d['fecha-fin-testeo']).toLowerCase();
 
-            return marca.includes(q) ||
+            return reg.includes(q) ||
+                   marca.includes(q) ||
                    modelo.includes(q) ||
                    serie.includes(q) ||
                    tecnico.includes(q) ||
@@ -305,6 +342,7 @@ function renderHub(fetchCloud = true) {
     empty.classList.add('hidden');
     grid.innerHTML = tests.map(test => {
         const isDraft = test.status === 'draft';
+        const regNumber = test.regNumber || test.data?.regNumber || 'TEST-0001';
         const marca = test.data?.marca || 'Sin marca';
         const modelo = test.data?.modelo || 'Sin modelo';
         const numeroSerie = test.data?.['numero-serie'] || '—';
@@ -318,7 +356,10 @@ function renderHub(fetchCloud = true) {
             <div class="tc-header">
                 <div class="tc-icon"><div class="status-dot ${isDraft ? 'dot-draft' : 'dot-done'}"></div></div>
                 <div class="tc-title">
-                    <h3 class="tc-marca">${marca}</h3>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <h3 class="tc-marca">${marca}</h3>
+                        <span style="font-size:0.75rem; font-weight:700; background:var(--surface-2); color:var(--primary); padding:0.1rem 0.4rem; border-radius:4px;">${regNumber}</span>
+                    </div>
                     <span class="tc-modelo">${modelo}</span>
                 </div>
                 <div class="tc-badge ${isDraft ? 'badge-draft' : 'badge-done'}">${isDraft ? 'En Progreso' : 'Finalizado'}</div>
@@ -349,13 +390,45 @@ function renderHub(fetchCloud = true) {
                     : `<button class="btn btn-outline btn-sm" onclick="viewReportHub('${test.id}')">📄 Ver Informe</button>
                        <button class="btn btn-outline btn-sm" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>`
                 }
-                <button class="btn btn-danger btn-sm" onclick="confirmDelete('${test.id}')">🗑️</button>
+                <button class="btn btn-danger btn-sm" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)">🗑️</button>
             </div>
         </div>
         `;
     }).join('');
     updateHubStats(tests);
 }
+
+window.continueTest = function (id) { activeTestId = id; showCover(); };
+window.viewReportHub = function (id) { openReportModal(id); };
+window.generatePdfForTest = function (id) {
+    const test = getTest(id);
+    if (test && window.generateAndPrint) window.generateAndPrint(test.data, test);
+};
+
+window.confirmDelete = async function (id) {
+    const password = await customPrompt(
+        '🔒 <strong>Acceso de Administrador Requerido</strong><br><br>Ingresá la contraseña de administrador para poder eliminar este registro de testeo:',
+        'AQA-Test — Permisos de Administrador',
+        { inputType: 'password', placeholder: 'Contraseña de admin...', confirmText: 'Verificar', cancelText: 'Cancelar' }
+    );
+    
+    if (password === null) return; // Cancelled
+    
+    if (password !== 'Horeca-Office26') {
+        await customAlert('⛔ Contraseña de administrador incorrecta. No tenés permisos para eliminar este testeo.', 'AQA-Test — Acceso Denegado');
+        return;
+    }
+
+    const ok = await customConfirm('¿Estás seguro de que querés eliminar este testeo definitivamente? Esta acción no se puede deshacer.', 'AQA-Test — Confirmar Eliminación', {
+        confirmText: 'Sí, Eliminar',
+        cancelText: 'Cancelar',
+        isDanger: true
+    });
+    if (ok) {
+        removeTest(id);
+        await customAlert('🗑️ Testeo eliminado exitosamente.');
+    }
+};
 
 function updateHubStats(tests) {
     const total = tests.length;
@@ -369,23 +442,6 @@ function updateHubStats(tests) {
         <div class="hub-stat"><span class="hub-stat-num" style="color:var(--warning)">${draft}</span><span class="hub-stat-lbl">En progreso</span></div>
     `;
 }
-
-window.continueTest = function (id) { activeTestId = id; showCover(); };
-window.viewReportHub = function (id) { openReportModal(id); };
-window.generatePdfForTest = function (id) {
-    const test = getTest(id);
-    if (test && window.generateAndPrint) window.generateAndPrint(test.data, test);
-};
-window.confirmDelete = async function (id) {
-    const ok = await customConfirm('¿Seguro que querés eliminar este testeo? Esta acción no se puede deshacer.', 'AQA-Test', {
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar',
-        isDanger: true
-    });
-    if (ok) {
-        removeTest(id);
-    }
-};
 
 function openReportModal(id) {
     const test = getTest(id);
@@ -429,12 +485,30 @@ document.getElementById('btn-cover-back').addEventListener('click', () => { rend
 function startWizard() {
     showView('wizard');
     if (!activeTestId) {
-        // Create new test
+        // Create new test with sequential regNumber
         activeTestId = genId();
-        upsertTest({ id: activeTestId, status: 'draft', createdAt: new Date().toISOString(), completedAt: null, currentStep: 1, data: {} });
+        const allTests = getAllTests();
+        let maxSeq = 0;
+        allTests.forEach(t => {
+            const reg = t.regNumber || t.data?.regNumber || '';
+            const m = reg.match(/TEST-(\d+)/i);
+            if (m) {
+                const n = parseInt(m[1], 10);
+                if (n > maxSeq) maxSeq = n;
+            }
+        });
+        if (maxSeq === 0) maxSeq = allTests.length;
+        const regNumber = `TEST-${String(maxSeq + 1).padStart(4, '0')}`;
+        upsertTest({ id: activeTestId, regNumber, status: 'draft', createdAt: new Date().toISOString(), completedAt: null, currentStep: 1, data: { regNumber } });
     }
     const test = getTest(activeTestId);
     if (!test) return;
+    if (!test.regNumber) {
+        test.regNumber = test.data?.regNumber || 'TEST-0001';
+        test.data = test.data || {};
+        test.data.regNumber = test.regNumber;
+        upsertTest(test);
+    }
 
     // Render LMC Hero Cards
     renderLmcHero('fria');
@@ -520,12 +594,16 @@ function updateWizard() {
     window.scrollTo(0, 0);
 }
 
-// ======================== TIME HELPERS (MM:SS) ========================
+// ======================== TIME HELPERS (MM:SS & HH:MM:SS) ========================
 function formatMMSS(totalSeconds) {
     if (isNaN(totalSeconds) || totalSeconds === null || totalSeconds === undefined) return '00:00';
     const s = Math.round(Math.max(0, totalSeconds));
-    const mins = Math.floor(s / 60);
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
     const secs = s % 60;
+    if (hrs > 0) {
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
@@ -534,13 +612,20 @@ function parseMMSS(val) {
     const str = String(val).trim();
     if (str.includes(':')) {
         const parts = str.split(':');
-        const mins = parseFloat(parts[0]) || 0;
-        const secs = parseFloat(parts[1]) || 0;
-        return mins * 60 + secs;
+        if (parts.length === 3) {
+            const hrs = parseFloat(parts[0]) || 0;
+            const mins = parseFloat(parts[1]) || 0;
+            const secs = parseFloat(parts[2]) || 0;
+            return hrs * 3600 + mins * 60 + secs;
+        } else if (parts.length === 2) {
+            const mins = parseFloat(parts[0]) || 0;
+            const secs = parseFloat(parts[1]) || 0;
+            return mins * 60 + secs;
+        }
     }
     const num = parseFloat(str) || 0;
-    if (num > 0 && num < 100 && String(val).includes('.')) return Math.round(num * 60);
-    return num;
+    // Plain number without colon was entered as minutes
+    return Math.round(num * 60);
 }
 
 function setupTimeInputMasks() {
@@ -555,6 +640,9 @@ function setupTimeInputMasks() {
                 } else {
                     input.value = `${n.toString().padStart(2, '0')}:00`;
                 }
+            } else if (/^\d{1,2}:\d{1,2}:\d{1,2}$/.test(val)) {
+                const [h, m, s] = val.split(':').map(x => parseInt(x, 10));
+                input.value = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             } else if (/^\d{1,2}:\d{1,2}$/.test(val)) {
                 const [m, s] = val.split(':').map(x => parseInt(x, 10));
                 input.value = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
@@ -713,7 +801,59 @@ async function finalizeTest() {
         test.completedAt = new Date().toISOString();
         upsertTest(test);
     }
-    await customAlert('✅ ¡Testeo finalizado y archivado exitosamente!');
+
+    const d = test?.data || {};
+    const regNumber = test?.regNumber || d.regNumber || 'TEST-0001';
+    const marca = d.marca || '—';
+    const modelo = d.modelo || '—';
+    const numeroSerie = d['numero-serie'] || '—';
+    const tecnico = d.tecnico || '—';
+    const fechaTesteo = formatDateDDMMAAAA(d['fecha-testeo']);
+    const fechaFinFmt = formatDateDDMMAAAA(test?.completedAt || fechaFin.value);
+
+    const emailRecipients = ['ivanc@pwg.com.ar', 'sebastian.garcia@pwg.com.ar', 'ezequiels@pwg.com.ar'];
+    const emailSubject = `[AQA-Test] Reporte de Testeo Técnico — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
+    const emailBody = `Estimados,
+
+En el día de la fecha se ha finalizado el testeo técnico correspondiente al registro Nº: ${regNumber}.
+
+Detalles del Equipo evaluado:
+• Marca: ${marca}
+• Modelo: ${modelo}
+• Nº de Serie: ${numeroSerie}
+• Técnico a cargo: ${tecnico}
+• Fecha de Testeo: ${fechaTesteo}
+• Fecha de Fin: ${fechaFinFmt}
+• Estado Final: ${estadoFinal}
+
+Se adjunta el reporte técnico con el registro de resultados del test adjunto.
+
+Saludos cordiales,
+Área Técnica — PWG / AQA-Test`;
+
+    const mailtoUrl = `mailto:${emailRecipients.join(',')}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
+    const modalMsg = `
+        <div style="text-align:left;">
+            <p style="margin-bottom:0.75rem; font-weight:700; color:var(--success);">✅ ¡Testeo finalizado y archivado exitosamente!</p>
+            <div style="background:var(--surface-2); padding:0.75rem; border-radius:6px; font-size:0.85rem; line-height:1.5; border-left:3px solid var(--primary); margin-bottom:0.75rem;">
+                <strong>Registro:</strong> ${regNumber}<br>
+                <strong>Equipo:</strong> ${marca} ${modelo} (S/N: ${numeroSerie})<br>
+                <strong>Destinatarios:</strong> ivanc@pwg.com.ar, sebastian.garcia@pwg.com.ar, ezequiels@pwg.com.ar
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-muted);">Podés enviar el correo protocolar automáticamente haciendo click debajo:</p>
+        </div>
+    `;
+
+    const wantsEmail = await customConfirm(modalMsg, 'AQA-Test — Notificación Protocolar', {
+        confirmText: '📧 Enviar Correo',
+        cancelText: 'Cerrar'
+    });
+
+    if (wantsEmail) {
+        window.open(mailtoUrl, '_blank');
+    }
+
     renderHub();
 }
 
@@ -736,9 +876,8 @@ const GATE_CHECKS = {
     },
 
     // Step 2: Condiciones y Funcionalidades
-    '2-1': () => ['temp-ambiente', 'temp-agua-entrada', 'presion-co2-medida'].every(id => (document.getElementById(id)?.value || '').trim() !== ''),
+    '2-1': () => ['temp-ambiente', 'temp-agua-entrada', 'presion-agua-entrada', 'presion-co2-medida'].every(id => (document.getElementById(id)?.value || '').trim() !== ''),
     '2-2': () => {
-        const p20 = document.getElementById('chk-presion-20psi')?.checked;
         const vent = document.getElementById('chk-ventilacion')?.checked;
         const disp = document.getElementById('chk-dispensar')?.checked;
         const perd = document.getElementById('chk-perdidas')?.checked;
@@ -749,7 +888,7 @@ const GATE_CHECKS = {
             const tLlenado = (document.getElementById('tiempo-llenado-tanque')?.value || '').trim();
             tankOk = cap !== '' && tLlenado !== '';
         }
-        return p20 && vent && disp && perd && tankOk;
+        return vent && disp && perd && tankOk;
     },
 
     // Step 3: Tiempos de Corte y 500ml
@@ -917,17 +1056,27 @@ function registerLmcEntry(prefix) {
     const inRange = !shouldLockNext(prefix, tempVal);
     const literTxt = ((nextIdx + 1) * 0.5).toFixed(1);
 
-    if (feedback) {
-        if (inRange) {
+    if (!inRange) {
+        // Automatically stop extraction stopwatch
+        stopStopwatch(prefix);
+        // Automatically start recovery stopwatch
+        startStopwatch('rec_' + prefix);
+
+        if (feedback) {
+            feedback.className = 'lmc-feedback-msg out-range';
+            feedback.textContent = `⚠️ ${literTxt} L (${tempVal.toFixed(1)} ºC) Fuera de rango. Extracción finalizada y cronómetro de recuperación iniciado automáticamente.`;
+            setTimeout(() => {
+                if (feedback.textContent.includes(literTxt)) feedback.textContent = '';
+            }, 4500);
+        }
+    } else {
+        if (feedback) {
             feedback.className = 'lmc-feedback-msg in-range';
             feedback.textContent = `✅ ${literTxt} L registrado (${tempVal.toFixed(1)} ºC) — Dentro de rango`;
-        } else {
-            feedback.className = 'lmc-feedback-msg out-range';
-            feedback.textContent = `⚠️ ${literTxt} L registrado (${tempVal.toFixed(1)} ºC) — Fuera del rango de temperatura`;
+            setTimeout(() => {
+                if (feedback.textContent.includes(literTxt)) feedback.textContent = '';
+            }, 3500);
         }
-        setTimeout(() => {
-            if (feedback.textContent.includes(literTxt)) feedback.textContent = '';
-        }, 3500);
     }
 
     inp.value = '';
@@ -979,15 +1128,68 @@ function updateObtainedLiters(prefix) {
 // ======================== STOPWATCH LOGIC ========================
 const stopwatches = {
     fria: { interval: null, startTime: 0, elapsedMs: 0 },
+    rec_fria: { interval: null, startTime: 0, elapsedMs: 0 },
     gas: { interval: null, startTime: 0, elapsedMs: 0 },
-    caliente: { interval: null, startTime: 0, elapsedMs: 0 }
+    rec_gas: { interval: null, startTime: 0, elapsedMs: 0 },
+    caliente: { interval: null, startTime: 0, elapsedMs: 0 },
+    rec_caliente: { interval: null, startTime: 0, elapsedMs: 0 }
 };
 
-function formatTime(ms) {
-    const totalSec = Math.floor(ms / 1000);
-    const min = Math.floor(totalSec / 60);
-    const sec = totalSec % 60;
-    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+function startStopwatch(key) {
+    const sw = stopwatches[key];
+    if (!sw || sw.interval) return;
+    sw.startTime = Date.now();
+    sw.interval = setInterval(() => updateStopwatchDisplay(key), 1000);
+}
+
+function stopStopwatch(key) {
+    const sw = stopwatches[key];
+    if (!sw || !sw.interval) return;
+    clearInterval(sw.interval);
+    sw.interval = null;
+    sw.elapsedMs += (Date.now() - sw.startTime);
+    updateStopwatchDisplay(key);
+    saveState();
+}
+
+function resetStopwatch(key) {
+    const sw = stopwatches[key];
+    if (!sw) return;
+    if (sw.interval) {
+        clearInterval(sw.interval);
+        sw.interval = null;
+    }
+    sw.elapsedMs = 0;
+    updateStopwatchDisplay(key);
+    saveState();
+}
+
+function updateStopwatchDisplay(key) {
+    const sw = stopwatches[key];
+    if (!sw) return;
+    const ms = sw.interval ? (Date.now() - sw.startTime + sw.elapsedMs) : sw.elapsedMs;
+    const formatted = formatMMSS(Math.floor(ms / 1000));
+    
+    if (key.startsWith('rec_')) {
+        const type = key.replace('rec_', '');
+        const display = document.getElementById(`sw-display-rec-${type}`);
+        if (display) display.textContent = formatted;
+        
+        const input = document.getElementById(`recuperacion-${type}`);
+        if (input) {
+            input.value = formatted;
+            updateCycleDisplay(type);
+        }
+    } else {
+        const display = document.getElementById(`sw-display-${key}`);
+        if (display) display.textContent = formatted;
+        
+        const input = document.getElementById(`extraccion-${key}`);
+        if (input) {
+            input.value = formatted;
+            updateCycleDisplay(key);
+        }
+    }
 }
 
 function updateCycleDisplay(type) {
@@ -1010,48 +1212,41 @@ function updateCycleDisplay(type) {
         cph = Math.ceil(cph * 1.15); // +15% tolerance, rounded up
         const cphEl = document.getElementById(`cycle-cph-${type}`);
         if (cphEl) cphEl.textContent = cph;
+
+        const entries = getLmcEntries(type);
+        const count = entries.length;
+        const obtainedL = count > 0 ? (count * 0.5) : 5.0;
+        const lph = Math.round(cph * obtainedL * 10) / 10;
+        const lphEl = document.getElementById(`cycle-lph-${type}`);
+        if (lphEl) lphEl.textContent = lph;
     } else {
         resultBox.style.display = 'none';
     }
 }
 
-function updateStopwatchDisplay(type) {
-    const sw = stopwatches[type];
-    const ms = sw.interval ? (Date.now() - sw.startTime + sw.elapsedMs) : sw.elapsedMs;
-    const display = document.getElementById(`sw-display-${type}`);
-    if (display) display.textContent = formatMMSS(Math.floor(ms / 1000));
-    
-    // Save to hidden input in MM:SS
-    const input = document.getElementById(`extraccion-${type}`);
-    if (input) {
-        input.value = formatMMSS(Math.floor(ms / 1000));
-        updateCycleDisplay(type);
-    }
-}
-
 // ======================== DATE VALIDATION ========================
 function validateDates() {
-    const ingreso = document.getElementById('fecha-ingreso').value;
-    const testeo = document.getElementById('fecha-testeo').value;
+    const ingreso = document.getElementById('fecha-ingreso')?.value;
+    const testeo = document.getElementById('fecha-testeo')?.value;
     const errEl = document.getElementById('err-fecha-ingreso');
     const ingresoInp = document.getElementById('fecha-ingreso');
     if (ingreso && testeo && ingreso > testeo) {
-        errEl.classList.remove('hidden');
-        ingresoInp.style.borderColor = 'var(--danger)';
+        errEl?.classList.remove('hidden');
+        if (ingresoInp) ingresoInp.style.borderColor = 'var(--danger)';
     } else {
-        errEl.classList.add('hidden');
-        ingresoInp.style.borderColor = '';
+        errEl?.classList.add('hidden');
+        if (ingresoInp) ingresoInp.style.borderColor = '';
     }
 }
-document.getElementById('fecha-ingreso').addEventListener('change', () => { validateDates(); refreshSeqForStep(currentStep); saveState(); });
-document.getElementById('fecha-testeo').addEventListener('change', () => { validateDates(); refreshSeqForStep(currentStep); saveState(); });
+document.getElementById('fecha-ingreso')?.addEventListener('change', () => { validateDates(); refreshSeqForStep(currentStep); saveState(); });
+document.getElementById('fecha-testeo')?.addEventListener('change', () => { validateDates(); refreshSeqForStep(currentStep); saveState(); });
 
 // ======================== CONDITIONAL TOGGLES ========================
-document.getElementById('chk-termostato-solo-frio-caliente').addEventListener('change', e => {
+document.getElementById('chk-termostato-solo-frio-caliente')?.addEventListener('change', e => {
     document.getElementById('termostato-wrapper').style.display = e.target.checked ? 'none' : 'flex';
     saveState();
 });
-document.getElementById('chk-tiene-tanque').addEventListener('change', e => {
+document.getElementById('chk-tiene-tanque')?.addEventListener('change', e => {
     document.getElementById('tanque-fields').style.display = e.target.checked ? 'grid' : 'none';
     saveState();
 });
@@ -1060,7 +1255,7 @@ document.getElementById('chk-tiene-tanque').addEventListener('change', e => {
 let timerInterval = null;
 const timerDisplay = document.getElementById('timer-display');
 const btnTimer = document.getElementById('btn-start-timer');
-btnTimer.addEventListener('click', () => {
+btnTimer?.addEventListener('click', () => {
     if (timerInterval) {
         clearInterval(timerInterval); timerInterval = null;
         timerDisplay.textContent = '10:00'; timerDisplay.style.color = '';
@@ -1087,6 +1282,7 @@ function updateMachetes() {
     const cMin = document.getElementById('temp-caliente-min')?.value || '--';
     const cMax = document.getElementById('temp-caliente-max')?.value || '--';
     const lProv = document.getElementById('litros-continuos-proveedor')?.value || '--';
+    const pEntrada = document.getElementById('presion-agua-entrada')?.value || '--';
 
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     set('machete-fria', `${fMin} – ${fMax}`);
@@ -1096,10 +1292,28 @@ function updateMachetes() {
     set('machete-litros-fria', lProv);
     set('machete-litros-gas', lProv);
     set('machete-litros-caliente', lProv);
+    set('machete-presion-entrada', pEntrada);
 
     updateObtainedLiters('fria');
     updateObtainedLiters('gas');
     updateObtainedLiters('caliente');
+    updateCaudal500();
+}
+
+function updateCaudal500() {
+    ['fria', 'caliente', 'gas'].forEach(type => {
+        const inp = document.getElementById(`tiempo-500-${type}`);
+        const badge = document.getElementById(`caudal-500-${type}`);
+        if (!inp || !badge) return;
+        const sec = parseMMSS(inp.value);
+        if (sec > 0) {
+            const lph = Math.round((1800 / sec) * 10) / 10;
+            badge.textContent = `Caudal: ${lph} L/h`;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    });
 }
 
 // ======================== DATALISTS ========================
@@ -1114,8 +1328,8 @@ function saveToList(key, value) {
     const items = JSON.parse(localStorage.getItem(key) || '[]');
     if (!items.includes(value)) { items.push(value); localStorage.setItem(key, JSON.stringify(items)); loadDatalists(); }
 }
-document.getElementById('marca').addEventListener('blur', e => saveToList(BRANDS_KEY, e.target.value));
-document.getElementById('modelo').addEventListener('blur', e => saveToList(MODELS_KEY, e.target.value));
+document.getElementById('marca')?.addEventListener('blur', e => saveToList(BRANDS_KEY, e.target.value));
+document.getElementById('modelo')?.addEventListener('blur', e => saveToList(MODELS_KEY, e.target.value));
 
 // ======================== SAVE STATE ========================
 window.saveState = function () {
@@ -1138,6 +1352,11 @@ window.saveState = function () {
         d[`ciclos_${p}`] = [...document.querySelectorAll(`#ciclos-${p}-body tr`)].map(tr => [...tr.querySelectorAll('input')].map(i => i.value));
     });
 
+    if (!test.regNumber) {
+        test.regNumber = d.regNumber || 'TEST-0001';
+    }
+    d.regNumber = test.regNumber;
+
     test.data = d;
     upsertTest(test);
 };
@@ -1154,6 +1373,12 @@ function loadState(test) {
     });
     document.querySelectorAll('#view-wizard input[type="hidden"][id]').forEach(el => { if (d[el.id] !== undefined) el.value = d[el.id]; });
 
+    // Restore regNumber
+    const regEl = document.getElementById('reg-number');
+    if (regEl) {
+        regEl.value = test.regNumber || d.regNumber || 'TEST-0001';
+    }
+
     if (d.canerias) document.querySelectorAll('#canerias-group .chip').forEach(c => c.classList.toggle('active', d.canerias.includes(c.dataset.value)));
     if (d.funciones) document.querySelectorAll('#funciones-group .chip').forEach(c => c.classList.toggle('active', d.funciones.includes(c.dataset.value)));
     if (d.estadoFinal) document.querySelector(`#estado-final-group .chip[data-value="${d.estadoFinal}"]`)?.classList.add('active');
@@ -1166,7 +1391,6 @@ function loadState(test) {
     if (sv > 0) { const sr = document.querySelector('.star-rating[data-id="gas-calidad"]'); if (sr) sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= sv)); }
 
     // Dynamic LMC cells sequential restore
-    // Restore LMC Hero Cards
     renderLmcHero('fria');
     renderLmcHero('gas');
     renderLmcHero('caliente');
@@ -1181,6 +1405,16 @@ function loadState(test) {
             stopwatches[prefix].elapsedMs = totalSec * 1000;
             updateStopwatchDisplay(prefix);
         }
+        
+        const recVal = d[`recuperacion-${prefix}`];
+        if (recVal !== undefined && recVal !== '') {
+            const recInput = document.getElementById(`recuperacion-${prefix}`);
+            if (recInput) recInput.value = recVal;
+            const totalSec = parseMMSS(recVal);
+            stopwatches[`rec_${prefix}`].elapsedMs = totalSec * 1000;
+            updateStopwatchDisplay(`rec_${prefix}`);
+        }
+
         updateCycleDisplay(prefix);
     });
 
@@ -1190,11 +1424,11 @@ function loadState(test) {
 }
 
 // ======================== GLOBAL INPUT WATCHER ========================
-document.getElementById('view-wizard').addEventListener('input', () => { refreshSeqForStep(currentStep); saveState(); });
+document.getElementById('view-wizard')?.addEventListener('input', () => { refreshSeqForStep(currentStep); saveState(); });
 
 // ======================== HUB BUTTONS ========================
-document.getElementById('btn-new-test').addEventListener('click', () => { activeTestId = null; showCover(); });
-document.getElementById('btn-new-test-empty').addEventListener('click', () => { activeTestId = null; showCover(); });
+document.getElementById('btn-new-test')?.addEventListener('click', () => { activeTestId = null; showCover(); });
+document.getElementById('btn-new-test-empty')?.addEventListener('click', () => { activeTestId = null; showCover(); });
 
 // ======================== INITIALIZATION ========================
 function init() {
@@ -1205,18 +1439,22 @@ function init() {
     const applyTheme = (theme) => {
         if (theme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
-            themeBtn.innerHTML = '☀️';
-            themeBtn.title = 'Modo Claro';
+            if (themeBtn) {
+                themeBtn.innerHTML = '☀️';
+                themeBtn.title = 'Modo Claro';
+            }
         } else {
             document.documentElement.removeAttribute('data-theme');
-            themeBtn.innerHTML = '🌙';
-            themeBtn.title = 'Modo Oscuro';
+            if (themeBtn) {
+                themeBtn.innerHTML = '🌙';
+                themeBtn.title = 'Modo Oscuro';
+            }
         }
     };
 
     applyTheme(savedTheme);
 
-    themeBtn.addEventListener('click', () => {
+    themeBtn?.addEventListener('click', () => {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const newTheme = isDark ? 'light' : 'dark';
         localStorage.setItem('techTestTheme', newTheme);
@@ -1286,35 +1524,42 @@ function init() {
         });
     });
 
-    // Stopwatch event listeners
+    // Stopwatch event listeners (Extraction & Recovery)
     ['fria', 'gas', 'caliente'].forEach(type => {
+        // Extraction stopwatch
         const btnStart = document.getElementById(`btn-sw-start-${type}`);
         const btnStop = document.getElementById(`btn-sw-stop-${type}`);
         const btnReset = document.getElementById(`btn-sw-reset-${type}`);
 
         btnStart?.addEventListener('click', () => {
-            if (stopwatches[type].interval) return;
-            stopwatches[type].startTime = Date.now();
-            stopwatches[type].interval = setInterval(() => updateStopwatchDisplay(type), 1000);
+            startStopwatch(type);
         });
 
         btnStop?.addEventListener('click', () => {
-            if (!stopwatches[type].interval) return;
-            clearInterval(stopwatches[type].interval);
-            stopwatches[type].interval = null;
-            stopwatches[type].elapsedMs += (Date.now() - stopwatches[type].startTime);
-            updateStopwatchDisplay(type);
-            saveState();
+            stopStopwatch(type);
+            // User requested: Auto-start recovery stopwatch when stopping extraction!
+            startStopwatch(`rec_${type}`);
         });
 
         btnReset?.addEventListener('click', () => {
-            if (stopwatches[type].interval) {
-                clearInterval(stopwatches[type].interval);
-                stopwatches[type].interval = null;
-            }
-            stopwatches[type].elapsedMs = 0;
-            updateStopwatchDisplay(type);
-            saveState();
+            resetStopwatch(type);
+        });
+
+        // Recovery stopwatch
+        const btnRecStart = document.getElementById(`btn-sw-start-rec-${type}`);
+        const btnRecStop = document.getElementById(`btn-sw-stop-rec-${type}`);
+        const btnRecReset = document.getElementById(`btn-sw-reset-rec-${type}`);
+
+        btnRecStart?.addEventListener('click', () => {
+            startStopwatch(`rec_${type}`);
+        });
+
+        btnRecStop?.addEventListener('click', () => {
+            stopStopwatch(`rec_${type}`);
+        });
+
+        btnRecReset?.addEventListener('click', () => {
+            resetStopwatch(`rec_${type}`);
         });
     });
 
