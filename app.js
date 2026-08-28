@@ -929,6 +929,35 @@ async function sendReportEmail(test) {
 
     const subject = `[AQA-Test] Reporte de Testeo Técnico — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
 
+    // Generate Base64 PDF in memory using html2pdf
+    let pdfDataUri = '';
+    try {
+        if (window.html2pdf && window.buildReportHTML) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = window.buildReportHTML(test.data, test);
+            tempDiv.style.width = '794px';
+            tempDiv.style.padding = '20px';
+            tempDiv.style.background = '#ffffff';
+            tempDiv.style.color = '#000000';
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            document.body.appendChild(tempDiv);
+
+            const opt = {
+                margin: 8,
+                filename: `Reporte_Tecnico_${regNumber}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            pdfDataUri = await html2pdf().set(opt).from(tempDiv).outputPdf('datauristring');
+            document.body.removeChild(tempDiv);
+        }
+    } catch (err) {
+        console.warn('PDF generation for email attachment skipped or failed:', err);
+    }
+
     const htmlBody = `
         <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 620px; margin: 0 auto; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
             <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 22px 26px;">
@@ -939,18 +968,20 @@ async function sendReportEmail(test) {
                 <p style="margin-top: 0; font-size: 15px;">Estimados,</p>
                 <p style="font-size: 14px; color: #334155;">En el día de la fecha se ha finalizado el testeo técnico correspondiente al registro <strong>${regNumber}</strong>.</p>
                 
-                <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 20px 0; border-radius: 6px; border-top: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #0f172a; font-size: 15px;">Detalles del Equipo evaluado:</h3>
+                <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 20px 0; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #0f172a; font-size: 15px;">Detalles del Equipo:</h3>
                     <ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px; line-height: 1.8;">
                         <li><strong>Registro:</strong> ${regNumber}</li>
-                        <li><strong>Marca:</strong> ${marca}</li>
-                        <li><strong>Modelo:</strong> ${modelo}</li>
+                        <li><strong>Marca y Modelo:</strong> ${marca} ${modelo}</li>
                         <li><strong>Nº de Serie:</strong> ${numeroSerie}</li>
                         <li><strong>Técnico a cargo:</strong> ${tecnico}</li>
-                        <li><strong>Fecha de Testeo:</strong> ${fechaTesteo}</li>
-                        <li><strong>Fecha de Fin:</strong> ${fechaFinFmt}</li>
+                        <li><strong>Fecha de Testeo:</strong> ${fechaTesteo} (Fin: ${fechaFinFmt})</li>
                         <li><strong>Estado Final:</strong> <span style="color: ${estadoFinal === 'Aprobado' ? '#059669' : '#dc2626'}; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: ${estadoFinal === 'Aprobado' ? '#ecfdf5' : '#fef2f2'}; border: 1px solid ${estadoFinal === 'Aprobado' ? '#a7f3d0' : '#fecaca'};">${estadoFinal}</span></li>
                     </ul>
+                </div>
+
+                <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 6px; margin: 18px 0; font-size: 13px; color: #334155;">
+                    📎 <strong>Archivo Adjunto:</strong> Se adjunta el Reporte Técnico Oficial (PDF) con el gráfico y tabla completa de mediciones.
                 </div>
 
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 22px 0;">
@@ -979,7 +1010,10 @@ async function sendReportEmail(test) {
         modelo: modelo,
         serie: numeroSerie,
         tecnico: tecnico,
-        estado_final: estadoFinal
+        estado_final: estadoFinal,
+        pdf_file: pdfDataUri,
+        attachment: pdfDataUri,
+        content: pdfDataUri
     };
 
     if (window.emailjs && typeof window.emailjs.send === 'function') {
