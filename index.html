@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="AQA-Test">
     <link rel="apple-touch-icon" href="logo-aqa.png">
     <link rel="icon" type="image/png" href="logo-aqa.png">
-    <link rel="stylesheet" href="styles.css?v=2.7">
+    <link rel="stylesheet" href="styles.css?v=2.8">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -37,7 +37,10 @@
             <div class="hub-content-header">
                 <div class="hub-header-top">
                     <h2 class="hub-content-title">Testeos</h2>
-                    <button class="btn-theme" id="btn-theme-toggle" title="Modo Nocturno">🌙</button>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-theme" id="btn-email-config" title="Configurar Correo Automático Noreply (Admin)">⚙️</button>
+                        <button class="btn-theme" id="btn-theme-toggle" title="Modo Nocturno">🌙</button>
+                    </div>
                 </div>
                 <div class="hub-search">
                     <input type="text" id="hub-search-input" placeholder="Buscar por marca, modelo, N° de serie, técnico, fecha o estado...">
@@ -855,9 +858,47 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: CONFIGURACIÓN DE CORREO ===================== -->
+<div id="email-config-overlay" class="report-overlay hidden">
+    <div class="report-modal" style="max-width: 540px;">
+        <div class="report-modal-header">
+            <h2 style="font-size: 1.05rem;">⚙️ Configuración de Correo (Noreply)</h2>
+            <button class="btn-report-close" id="btn-email-config-close">✕</button>
+        </div>
+        <div class="report-modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem;">
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
+                Configurá el servicio de <strong>Resend</strong> para que la aplicación envíe los reportes técnicos y PDFs automáticamente desde un remitente <code>noreply</code> a los supervisores al finalizar cada test.
+            </p>
+            
+            <div class="field">
+                <label for="cfg-resend-key" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Clave API de Resend:</label>
+                <input type="password" id="cfg-resend-key" placeholder="re_123456789..." style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-family: monospace; font-size: 0.9rem;">
+                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">Obtené tu clave gratuita en <a href="https://resend.com" target="_blank" style="color: var(--primary);">resend.com</a> (3.000 envíos/mes gratis).</small>
+            </div>
+
+            <div class="field">
+                <label for="cfg-sender-email" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Remitente (From):</label>
+                <input type="text" id="cfg-sender-email" placeholder="AQA-Test &lt;onboarding@resend.dev&gt;" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-size: 0.9rem;">
+                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">Por defecto: <code>AQA-Test &lt;onboarding@resend.dev&gt;</code> o tu dominio propio.</small>
+            </div>
+
+            <div class="field">
+                <label for="cfg-recipients-email" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Destinatarios por defecto (separados por coma):</label>
+                <input type="text" id="cfg-recipients-email" placeholder="ivanc@pwg.com.ar, sebastian.garcia@pwg.com.ar, ezequiels@pwg.com.ar" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-size: 0.9rem;">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; gap: 0.75rem;">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-test-email-send">📧 Probar Envío</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-save-email-config">Guardar Configuración</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=2.7"></script>
-<script src="pdf-generator.js?v=2.7"></script>
+<script src="app.js?v=2.8"></script>
+<script src="pdf-generator.js?v=2.8"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

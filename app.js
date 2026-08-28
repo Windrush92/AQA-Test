@@ -806,6 +806,172 @@ document.getElementById('btn-pdf-wizard').addEventListener('click', () => {
 });
 document.getElementById('btn-finish').addEventListener('click', finalizeTest);
 
+// ======================== LOADING DIALOG ========================
+function showLoadingDialog(message, title = 'AQA-Test') {
+    const overlay = document.getElementById('custom-dialog-overlay');
+    const titleEl = document.getElementById('custom-dialog-title');
+    const bodyEl = document.getElementById('custom-dialog-body');
+    const btnConfirm = document.getElementById('custom-dialog-btn-confirm');
+    const btnCancel = document.getElementById('custom-dialog-btn-cancel');
+
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div style="text-align:center; padding: 1.5rem 0.5rem;">
+                <div style="margin: 0 auto 1.25rem; width: 42px; height: 42px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spinDialog 0.9s infinite linear;"></div>
+                <div style="font-size:0.95rem; font-weight:600; line-height:1.5; color:var(--text-main);">${message}</div>
+            </div>
+        `;
+    }
+    if (btnConfirm) btnConfirm.style.display = 'none';
+    if (btnCancel) btnCancel.style.display = 'none';
+    overlay?.classList.remove('hidden');
+
+    return {
+        close: () => {
+            overlay?.classList.add('hidden');
+            if (btnConfirm) btnConfirm.style.display = '';
+            if (btnCancel) btnCancel.style.display = '';
+        }
+    };
+}
+
+// ======================== RESEND / AUTOMATED EMAIL ========================
+const DEFAULT_EMAIL_RECIPIENTS = ['ivanc@pwg.com.ar', 'sebastian.garcia@pwg.com.ar', 'ezequiels@pwg.com.ar'];
+const RESEND_API_URL = 'https://api.resend.com/emails';
+
+function getResendApiKey() {
+    return localStorage.getItem('AQA_RESEND_API_KEY') || '';
+}
+
+function getSenderEmail() {
+    return localStorage.getItem('AQA_SENDER_EMAIL') || 'AQA-Test <onboarding@resend.dev>';
+}
+
+function getEmailRecipients() {
+    const custom = localStorage.getItem('AQA_EMAIL_RECIPIENTS');
+    if (custom && custom.trim()) {
+        return custom.split(',').map(e => e.trim()).filter(Boolean);
+    }
+    return DEFAULT_EMAIL_RECIPIENTS;
+}
+
+async function sendReportEmail(test) {
+    const d = test?.data || {};
+    const regNumber = test?.regNumber || d.regNumber || 'TEST-0001';
+    const marca = d.marca || '—';
+    const modelo = d.modelo || '—';
+    const numeroSerie = d['numero-serie'] || '—';
+    const tecnico = d.tecnico || '—';
+    const fechaTesteo = formatDateDDMMAAAA(d['fecha-testeo']);
+    const fechaFinFmt = formatDateDDMMAAAA(test?.completedAt || d['fecha-fin-testeo']);
+    const estadoFinal = d.estadoFinal || 'Aprobado';
+
+    const subject = `[AQA-Test] Reporte de Testeo Técnico — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
+
+    const htmlBody = `
+        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 620px; margin: 0 auto; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 22px 26px;">
+                <h2 style="margin: 0; font-size: 20px; letter-spacing: -0.5px;">AQA-Test — Protocolo de Testeo Técnico</h2>
+                <span style="font-size: 13px; opacity: 0.85; display: block; margin-top: 4px;">PWG Argentina • Notificación Oficial</span>
+            </div>
+            <div style="padding: 24px 26px;">
+                <p style="margin-top: 0; font-size: 15px;">Estimados,</p>
+                <p style="font-size: 14px; color: #334155;">En el día de la fecha se ha finalizado el testeo técnico correspondiente al registro <strong>${regNumber}</strong>.</p>
+                
+                <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 20px 0; border-radius: 6px; border-top: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #0f172a; font-size: 15px;">Detalles del Equipo evaluado:</h3>
+                    <ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px; line-height: 1.8;">
+                        <li><strong>Registro:</strong> ${regNumber}</li>
+                        <li><strong>Marca:</strong> ${marca}</li>
+                        <li><strong>Modelo:</strong> ${modelo}</li>
+                        <li><strong>Nº de Serie:</strong> ${numeroSerie}</li>
+                        <li><strong>Técnico a cargo:</strong> ${tecnico}</li>
+                        <li><strong>Fecha de Testeo:</strong> ${fechaTesteo}</li>
+                        <li><strong>Fecha de Fin:</strong> ${fechaFinFmt}</li>
+                        <li><strong>Estado Final:</strong> <span style="color: ${estadoFinal === 'Aprobado' ? '#059669' : '#dc2626'}; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: ${estadoFinal === 'Aprobado' ? '#ecfdf5' : '#fef2f2'}; border: 1px solid ${estadoFinal === 'Aprobado' ? '#a7f3d0' : '#fecaca'};">${estadoFinal}</span></li>
+                    </ul>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 24px;">
+                    📎 Se adjunta el <strong>Reporte Técnico Oficial en PDF</strong> con el detalle completo de las mediciones y rendimientos obtenidos.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 22px 0;">
+                <p style="font-size: 12px; color: #94a3b8; margin: 0; text-align: center;">
+                    Este es un correo generado automáticamente por el sistema <strong>AQA-Test (PWG)</strong>.<br>Por favor, no responder a esta casilla de noreply.
+                </p>
+            </div>
+        </div>
+    `;
+
+    // Try to generate Base64 PDF attachment using html2pdf
+    let attachments = [];
+    try {
+        if (window.html2pdf && window.buildReportHTML) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = window.buildReportHTML(test.data, test);
+            tempDiv.style.width = '794px';
+            tempDiv.style.padding = '20px';
+            tempDiv.style.background = '#ffffff';
+            tempDiv.style.color = '#000000';
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            document.body.appendChild(tempDiv);
+
+            const opt = {
+                margin: 8,
+                filename: `Reporte_Tecnico_${regNumber}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            const pdfDataUri = await html2pdf().set(opt).from(tempDiv).outputPdf('datauristring');
+            document.body.removeChild(tempDiv);
+
+            if (pdfDataUri && pdfDataUri.includes(',')) {
+                const base64Data = pdfDataUri.split(',')[1];
+                attachments.push({
+                    filename: `Reporte_Tecnico_${regNumber}.pdf`,
+                    content: base64Data
+                });
+            }
+        }
+    } catch (err) {
+        console.warn('PDF generation for email attachment skipped or failed:', err);
+    }
+
+    const apiKey = getResendApiKey();
+    if (!apiKey) {
+        return { success: false, reason: 'no_key' };
+    }
+
+    const payload = {
+        from: getSenderEmail(),
+        to: getEmailRecipients(),
+        subject: subject,
+        html: htmlBody,
+        attachments: attachments.length > 0 ? attachments : undefined
+    };
+
+    const res = await fetch(RESEND_API_URL, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP ${res.status}`);
+    }
+
+    return { success: true };
+}
+
 async function finalizeTest() {
     const estadoFinal = document.querySelector('#estado-final-group .chip.active')?.dataset.value;
     if (!estadoFinal) {
@@ -830,56 +996,42 @@ async function finalizeTest() {
         upsertTest(test);
     }
 
-    const d = test?.data || {};
-    const regNumber = test?.regNumber || d.regNumber || 'TEST-0001';
-    const marca = d.marca || '—';
-    const modelo = d.modelo || '—';
-    const numeroSerie = d['numero-serie'] || '—';
-    const tecnico = d.tecnico || '—';
-    const fechaTesteo = formatDateDDMMAAAA(d['fecha-testeo']);
-    const fechaFinFmt = formatDateDDMMAAAA(test?.completedAt || fechaFin.value);
+    const recipients = getEmailRecipients();
 
-    const emailRecipients = ['ivanc@pwg.com.ar', 'sebastian.garcia@pwg.com.ar', 'ezequiels@pwg.com.ar'];
-    const emailSubject = `[AQA-Test] Reporte de Testeo Técnico — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
-    const emailBody = `Estimados,
+    // Show loading spinner dialog while sending in background
+    const loading = showLoadingDialog(
+        `Finalizando testeo y enviando reporte protocolar con PDF adjunto desde <code>noreply</code> a:<br><br>` +
+        `<small style="color:var(--text-muted);">${recipients.join('<br>')}</small>`,
+        'AQA-Test — Enviando Correo Automático'
+    );
 
-En el día de la fecha se ha finalizado el testeo técnico correspondiente al registro Nº: ${regNumber}.
+    try {
+        const emailResult = await sendReportEmail(test);
+        loading.close();
 
-Detalles del Equipo evaluado:
-• Marca: ${marca}
-• Modelo: ${modelo}
-• Nº de Serie: ${numeroSerie}
-• Técnico a cargo: ${tecnico}
-• Fecha de Testeo: ${fechaTesteo}
-• Fecha de Fin: ${fechaFinFmt}
-• Estado Final: ${estadoFinal}
-
-Se adjunta el reporte técnico con el registro de resultados del test adjunto.
-
-Saludos cordiales,
-Área Técnica — PWG / AQA-Test`;
-
-    const mailtoUrl = `mailto:${emailRecipients.join(',')}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-
-    const modalMsg = `
-        <div style="text-align:left;">
-            <p style="margin-bottom:0.75rem; font-weight:700; color:var(--success);">✅ ¡Testeo finalizado y archivado exitosamente!</p>
-            <div style="background:var(--surface-2); padding:0.75rem; border-radius:6px; font-size:0.85rem; line-height:1.5; border-left:3px solid var(--primary); margin-bottom:0.75rem;">
-                <strong>Registro:</strong> ${regNumber}<br>
-                <strong>Equipo:</strong> ${marca} ${modelo} (S/N: ${numeroSerie})<br>
-                <strong>Destinatarios:</strong> ivanc@pwg.com.ar, sebastian.garcia@pwg.com.ar, ezequiels@pwg.com.ar
-            </div>
-            <p style="font-size:0.85rem; color:var(--text-muted);">Podés enviar el correo protocolar automáticamente haciendo click debajo:</p>
-        </div>
-    `;
-
-    const wantsEmail = await customConfirm(modalMsg, 'AQA-Test — Notificación Protocolar', {
-        confirmText: '📧 Enviar Correo',
-        cancelText: 'Cerrar'
-    });
-
-    if (wantsEmail) {
-        window.open(mailtoUrl, '_blank');
+        if (emailResult.success) {
+            await customAlert(
+                `✅ <strong>¡Testeo finalizado con éxito!</strong><br><br>` +
+                `El reporte protocolar y el PDF oficial adjunto fueron enviados automáticamente desde <code>noreply</code> a:<br>` +
+                `• ${recipients.join('<br>• ')}`,
+                'AQA-Test — Notificación Enviada'
+            );
+        } else if (emailResult.reason === 'no_key') {
+            await customAlert(
+                `✅ <strong>Testeo finalizado y archivado exitosamente.</strong><br><br>` +
+                `<small style="color:var(--text-muted);">Aviso: Para activar el envío automático de correos en segundo plano, configurá tu clave de Resend en el botón ⚙️ del panel.</small>`,
+                'AQA-Test'
+            );
+        }
+    } catch (err) {
+        loading.close();
+        console.error('Error in automated email:', err);
+        await customAlert(
+            `✅ <strong>Testeo finalizado y archivado.</strong><br><br>` +
+            `<span style="color:var(--danger)">⚠️ Error al enviar correo automático: ${err.message}</span><br><br>` +
+            `Podés verificar o actualizar la clave de Resend en el botón ⚙️ de la pantalla principal.`,
+            'AQA-Test — Alerta de Correo'
+        );
     }
 
     renderHub();
@@ -1594,6 +1746,105 @@ function init() {
     setupTimeInputMasks();
     loadDatalists();
     setupHubListeners();
+
+    // Email Config Modal listeners (Admin Protected)
+    const btnEmailConfig = document.getElementById('btn-email-config');
+    const emailConfigOverlay = document.getElementById('email-config-overlay');
+    const btnEmailConfigClose = document.getElementById('btn-email-config-close');
+    const btnSaveEmailConfig = document.getElementById('btn-save-email-config');
+    const btnTestEmailSend = document.getElementById('btn-test-email-send');
+
+    btnEmailConfig?.addEventListener('click', async () => {
+        const password = await customPrompt(
+            '🔒 <strong>Acceso de Administrador</strong><br><br>Ingresá la contraseña para configurar el servicio de correo noreply:',
+            'AQA-Test — Permisos Requeridos',
+            { inputType: 'password', placeholder: 'Contraseña de admin...', confirmText: 'Ingresar', cancelText: 'Cancelar' }
+        );
+        if (password === null) return;
+        if (password !== 'Horeca-Office26') {
+            await customAlert('⛔ Contraseña incorrecta.', 'AQA-Test — Acceso Denegado');
+            return;
+        }
+
+        const keyInput = document.getElementById('cfg-resend-key');
+        const senderInput = document.getElementById('cfg-sender-email');
+        const recInput = document.getElementById('cfg-recipients-email');
+
+        if (keyInput) keyInput.value = getResendApiKey();
+        if (senderInput) senderInput.value = getSenderEmail();
+        if (recInput) recInput.value = getEmailRecipients().join(', ');
+
+        emailConfigOverlay?.classList.remove('hidden');
+    });
+
+    btnEmailConfigClose?.addEventListener('click', () => {
+        emailConfigOverlay?.classList.add('hidden');
+    });
+
+    btnSaveEmailConfig?.addEventListener('click', async () => {
+        const key = (document.getElementById('cfg-resend-key')?.value || '').trim();
+        const sender = (document.getElementById('cfg-sender-email')?.value || '').trim();
+        const rec = (document.getElementById('cfg-recipients-email')?.value || '').trim();
+
+        if (key) localStorage.setItem('AQA_RESEND_API_KEY', key);
+        if (sender) localStorage.setItem('AQA_SENDER_EMAIL', sender);
+        if (rec) localStorage.setItem('AQA_EMAIL_RECIPIENTS', rec);
+
+        emailConfigOverlay?.classList.add('hidden');
+        await customAlert('✅ Configuración de correo guardada exitosamente.', 'AQA-Test — Noreply Configurado');
+    });
+
+    btnTestEmailSend?.addEventListener('click', async () => {
+        const key = (document.getElementById('cfg-resend-key')?.value || '').trim() || getResendApiKey();
+        const sender = (document.getElementById('cfg-sender-email')?.value || '').trim() || getSenderEmail();
+        const rec = (document.getElementById('cfg-recipients-email')?.value || '').trim();
+        const recipientsList = rec ? rec.split(',').map(e => e.trim()).filter(Boolean) : getEmailRecipients();
+
+        if (!key) {
+            await customAlert('Por favor, ingresá una clave de API de Resend primero.');
+            return;
+        }
+
+        const testPayload = {
+            from: sender,
+            to: recipientsList,
+            subject: '[AQA-Test] Correo de Prueba del Sistema Noreply',
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #1e293b; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #2563eb; margin-top: 0;">AQA-Test — Correo de Prueba</h2>
+                    <p>Este es un correo de prueba enviado desde <strong>AQA-Test (PWG)</strong> para verificar la conexión automática en segundo plano con el servicio de Resend.</p>
+                    <p style="font-size: 12px; color: #64748b;">Fecha y Hora: ${new Date().toLocaleString()}</p>
+                </div>
+            `
+        };
+
+        const testLoading = showLoadingDialog('Enviando correo de prueba a través de Resend...', 'AQA-Test');
+        try {
+            const res = await fetch(RESEND_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testPayload)
+            });
+            testLoading.close();
+            if (res.ok) {
+                await customAlert(
+                    `✅ <strong>¡Correo de prueba enviado con éxito!</strong><br><br>` +
+                    `Revisá la bandeja de entrada de:<br>• ${recipientsList.join('<br>• ')}`,
+                    'AQA-Test — Envío Exitoso'
+                );
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.message || `Error HTTP ${res.status}`);
+            }
+        } catch (err) {
+            testLoading.close();
+            await customAlert(`⚠️ Error al enviar correo de prueba: ${err.message}`, 'AQA-Test — Error');
+        }
+    });
+
     renderHub();
     initCloudSync();
 }
