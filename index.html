@@ -844,24 +844,27 @@
 <div id="email-config-overlay" class="report-overlay hidden">
     <div class="report-modal" style="max-width: 540px;">
         <div class="report-modal-header">
-            <h2 style="font-size: 1.05rem;">⚙️ Configuración de Correo (Noreply)</h2>
+            <h2 style="font-size: 1.05rem;">⚙️ Configuración de Correo Automático</h2>
             <button class="btn-report-close" id="btn-email-config-close">✕</button>
         </div>
         <div class="report-modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem;">
             <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
-                Configurá el servicio de <strong>Resend</strong> para que la aplicación envíe los reportes técnicos y PDFs automáticamente desde un remitente <code>noreply</code> a los supervisores al finalizar cada test.
+                Servicio de envío automático en segundo plano mediante <strong>EmailJS</strong> para notificar a supervisores al finalizar cada testeo técnico.
             </p>
             
             <div class="field">
-                <label for="cfg-resend-key" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Clave API de Resend:</label>
-                <input type="password" id="cfg-resend-key" placeholder="re_123456789..." style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-family: monospace; font-size: 0.9rem;">
-                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">Obtené tu clave gratuita en <a href="https://resend.com" target="_blank" style="color: var(--primary);">resend.com</a> (3.000 envíos/mes gratis).</small>
+                <label for="cfg-emailjs-service" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Service ID:</label>
+                <input type="text" id="cfg-emailjs-service" placeholder="service_xxxxxxx" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-family: monospace; font-size: 0.9rem;">
             </div>
 
             <div class="field">
-                <label for="cfg-sender-email" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Remitente (From):</label>
-                <input type="text" id="cfg-sender-email" placeholder="AQA-Test &lt;onboarding@resend.dev&gt;" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-size: 0.9rem;">
-                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">Por defecto: <code>AQA-Test &lt;onboarding@resend.dev&gt;</code> o tu dominio propio.</small>
+                <label for="cfg-emailjs-template" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Template ID:</label>
+                <input type="text" id="cfg-emailjs-template" placeholder="template_xxxxxxx" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-family: monospace; font-size: 0.9rem;">
+            </div>
+
+            <div class="field">
+                <label for="cfg-emailjs-key" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.35rem; display: block;">Public Key:</label>
+                <input type="text" id="cfg-emailjs-key" placeholder="Public Key..." style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-main); font-family: monospace; font-size: 0.9rem;">
             </div>
 
             <div class="field">
@@ -878,9 +881,10 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=2.9"></script>
-<script src="pdf-generator.js?v=2.9"></script>
+<script src="app.js?v=3.0"></script>
+<script src="pdf-generator.js?v=3.0"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

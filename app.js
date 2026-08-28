@@ -893,18 +893,21 @@ function showLoadingDialog(message, title = 'AQA-Test') {
     };
 }
 
-// ======================== RESEND / AUTOMATED EMAIL ========================
+// ======================== EMAILJS / AUTOMATED EMAIL ========================
 const DEFAULT_EMAIL_RECIPIENTS = ['ivanc@pwg.com.ar', 'sebastian.garcia@pwg.com.ar', 'ezequiels@pwg.com.ar'];
-const RESEND_API_URL = 'https://api.resend.com/emails';
+const EMAILJS_DEFAULT_SERVICE = 'service_k27nmjd';
+const EMAILJS_DEFAULT_TEMPLATE = 'template_1810qvi';
+const EMAILJS_DEFAULT_PUBLIC_KEY = 'DWB1RaiQEY8GNSShW';
 
-function getResendApiKey() {
-    return localStorage.getItem('AQA_RESEND_API_KEY') || '';
+function getEmailJsServiceId() {
+    return localStorage.getItem('AQA_EMAILJS_SERVICE_ID') || EMAILJS_DEFAULT_SERVICE;
 }
-
-function getSenderEmail() {
-    return localStorage.getItem('AQA_SENDER_EMAIL') || 'AQA-Test <onboarding@resend.dev>';
+function getEmailJsTemplateId() {
+    return localStorage.getItem('AQA_EMAILJS_TEMPLATE_ID') || EMAILJS_DEFAULT_TEMPLATE;
 }
-
+function getEmailJsPublicKey() {
+    return localStorage.getItem('AQA_EMAILJS_PUBLIC_KEY') || EMAILJS_DEFAULT_PUBLIC_KEY;
+}
 function getEmailRecipients() {
     const custom = localStorage.getItem('AQA_EMAIL_RECIPIENTS');
     if (custom && custom.trim()) {
@@ -950,83 +953,56 @@ async function sendReportEmail(test) {
                     </ul>
                 </div>
 
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 24px;">
-                    📎 Se adjunta el <strong>Reporte Técnico Oficial en PDF</strong> con el detalle completo de las mediciones y rendimientos obtenidos.
-                </p>
-                
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 22px 0;">
                 <p style="font-size: 12px; color: #94a3b8; margin: 0; text-align: center;">
-                    Este es un correo generado automáticamente por el sistema <strong>AQA-Test (PWG)</strong>.<br>Por favor, no responder a esta casilla de noreply.
+                    Este es un correo generado automáticamente por el sistema <strong>AQA-Test (PWG)</strong>.<br>Por favor, no responder a esta casilla.
                 </p>
             </div>
         </div>
     `;
 
-    // Try to generate Base64 PDF attachment using html2pdf
-    let attachments = [];
-    try {
-        if (window.html2pdf && window.buildReportHTML) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = window.buildReportHTML(test.data, test);
-            tempDiv.style.width = '794px';
-            tempDiv.style.padding = '20px';
-            tempDiv.style.background = '#ffffff';
-            tempDiv.style.color = '#000000';
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.left = '-9999px';
-            document.body.appendChild(tempDiv);
+    const serviceId = getEmailJsServiceId();
+    const templateId = getEmailJsTemplateId();
+    const publicKey = getEmailJsPublicKey();
+    const recipients = getEmailRecipients().join(', ');
 
-            const opt = {
-                margin: 8,
-                filename: `Reporte_Tecnico_${regNumber}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            const pdfDataUri = await html2pdf().set(opt).from(tempDiv).outputPdf('datauristring');
-            document.body.removeChild(tempDiv);
-
-            if (pdfDataUri && pdfDataUri.includes(',')) {
-                const base64Data = pdfDataUri.split(',')[1];
-                attachments.push({
-                    filename: `Reporte_Tecnico_${regNumber}.pdf`,
-                    content: base64Data
-                });
-            }
-        }
-    } catch (err) {
-        console.warn('PDF generation for email attachment skipped or failed:', err);
-    }
-
-    const apiKey = getResendApiKey();
-    if (!apiKey) {
+    if (!publicKey || !serviceId || !templateId) {
         return { success: false, reason: 'no_key' };
     }
 
-    const payload = {
-        from: getSenderEmail(),
-        to: getEmailRecipients(),
+    const templateParams = {
+        to_email: recipients,
         subject: subject,
-        html: htmlBody,
-        attachments: attachments.length > 0 ? attachments : undefined
+        message_html: htmlBody,
+        reg_number: regNumber,
+        marca: marca,
+        modelo: modelo,
+        serie: numeroSerie,
+        tecnico: tecnico,
+        estado_final: estadoFinal
     };
 
-    const res = await fetch(RESEND_API_URL, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Error HTTP ${res.status}`);
+    if (window.emailjs && typeof window.emailjs.send === 'function') {
+        window.emailjs.init({ publicKey });
+        const res = await window.emailjs.send(serviceId, templateId, templateParams, publicKey);
+        return { success: true, res };
+    } else {
+        const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                service_id: serviceId,
+                template_id: templateId,
+                user_id: publicKey,
+                template_params: templateParams
+            })
+        });
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(errText || `Error HTTP ${res.status}`);
+        }
+        return { success: true };
     }
-
-    return { success: true };
 }
 
 async function finalizeTest() {
@@ -1057,7 +1033,7 @@ async function finalizeTest() {
 
     // Show loading spinner dialog while sending in background
     const loading = showLoadingDialog(
-        `Finalizando testeo y enviando reporte protocolar con PDF adjunto desde <code>noreply</code> a:<br><br>` +
+        `Finalizando testeo y enviando notificación oficial automática a:<br><br>` +
         `<small style="color:var(--text-muted);">${recipients.join('<br>')}</small>`,
         'AQA-Test — Enviando Correo Automático'
     );
@@ -1069,14 +1045,14 @@ async function finalizeTest() {
         if (emailResult.success) {
             await customAlert(
                 `✅ <strong>¡Testeo finalizado con éxito!</strong><br><br>` +
-                `El reporte protocolar y el PDF oficial adjunto fueron enviados automáticamente desde <code>noreply</code> a:<br>` +
+                `La notificación protocolar fue enviada automáticamente a:<br>` +
                 `• ${recipients.join('<br>• ')}`,
                 'AQA-Test — Notificación Enviada'
             );
         } else if (emailResult.reason === 'no_key') {
             await customAlert(
                 `✅ <strong>Testeo finalizado y archivado exitosamente.</strong><br><br>` +
-                `<small style="color:var(--text-muted);">Aviso: Para activar el envío automático de correos en segundo plano, configurá tu clave de Resend en el botón ⚙️ del panel.</small>`,
+                `<small style="color:var(--text-muted);">Aviso: Para activar el envío automático de correos en segundo plano, configurá los datos de EmailJS en el botón ⚙️ del panel.</small>`,
                 'AQA-Test'
             );
         }
@@ -1086,7 +1062,7 @@ async function finalizeTest() {
         await customAlert(
             `✅ <strong>Testeo finalizado y archivado.</strong><br><br>` +
             `<span style="color:var(--danger)">⚠️ Error al enviar correo automático: ${err.message}</span><br><br>` +
-            `Podés verificar o actualizar la clave de Resend en el botón ⚙️ de la pantalla principal.`,
+            `Podés verificar o actualizar los datos de EmailJS en el botón ⚙️ de la pantalla principal.`,
             'AQA-Test — Alerta de Correo'
         );
     }
@@ -1811,7 +1787,7 @@ function init() {
 
     btnEmailConfig?.addEventListener('click', async () => {
         const password = await customPrompt(
-            '🔒 <strong>Acceso de Administrador</strong><br><br>Ingresá la contraseña para configurar el servicio de correo noreply:',
+            '🔒 <strong>Acceso de Administrador</strong><br><br>Ingresá la contraseña para configurar el servicio de correo automático:',
             'AQA-Test — Permisos Requeridos',
             { inputType: 'password', placeholder: 'Contraseña de admin...', confirmText: 'Ingresar', cancelText: 'Cancelar' }
         );
@@ -1821,12 +1797,14 @@ function init() {
             return;
         }
 
-        const keyInput = document.getElementById('cfg-resend-key');
-        const senderInput = document.getElementById('cfg-sender-email');
+        const serviceInput = document.getElementById('cfg-emailjs-service');
+        const templateInput = document.getElementById('cfg-emailjs-template');
+        const keyInput = document.getElementById('cfg-emailjs-key');
         const recInput = document.getElementById('cfg-recipients-email');
 
-        if (keyInput) keyInput.value = getResendApiKey();
-        if (senderInput) senderInput.value = getSenderEmail();
+        if (serviceInput) serviceInput.value = getEmailJsServiceId();
+        if (templateInput) templateInput.value = getEmailJsTemplateId();
+        if (keyInput) keyInput.value = getEmailJsPublicKey();
         if (recInput) recInput.value = getEmailRecipients().join(', ');
 
         emailConfigOverlay?.classList.remove('hidden');
@@ -1837,62 +1815,76 @@ function init() {
     });
 
     btnSaveEmailConfig?.addEventListener('click', async () => {
-        const key = (document.getElementById('cfg-resend-key')?.value || '').trim();
-        const sender = (document.getElementById('cfg-sender-email')?.value || '').trim();
+        const service = (document.getElementById('cfg-emailjs-service')?.value || '').trim();
+        const template = (document.getElementById('cfg-emailjs-template')?.value || '').trim();
+        const key = (document.getElementById('cfg-emailjs-key')?.value || '').trim();
         const rec = (document.getElementById('cfg-recipients-email')?.value || '').trim();
 
-        if (key) localStorage.setItem('AQA_RESEND_API_KEY', key);
-        if (sender) localStorage.setItem('AQA_SENDER_EMAIL', sender);
+        if (service) localStorage.setItem('AQA_EMAILJS_SERVICE_ID', service);
+        if (template) localStorage.setItem('AQA_EMAILJS_TEMPLATE_ID', template);
+        if (key) localStorage.setItem('AQA_EMAILJS_PUBLIC_KEY', key);
         if (rec) localStorage.setItem('AQA_EMAIL_RECIPIENTS', rec);
 
         emailConfigOverlay?.classList.add('hidden');
-        await customAlert('✅ Configuración de correo guardada exitosamente.', 'AQA-Test — Noreply Configurado');
+        await customAlert('✅ Configuración de correo guardada exitosamente.', 'AQA-Test — Correo Configurado');
     });
 
     btnTestEmailSend?.addEventListener('click', async () => {
-        const key = (document.getElementById('cfg-resend-key')?.value || '').trim() || getResendApiKey();
-        const sender = (document.getElementById('cfg-sender-email')?.value || '').trim() || getSenderEmail();
+        const service = (document.getElementById('cfg-emailjs-service')?.value || '').trim() || getEmailJsServiceId();
+        const template = (document.getElementById('cfg-emailjs-template')?.value || '').trim() || getEmailJsTemplateId();
+        const key = (document.getElementById('cfg-emailjs-key')?.value || '').trim() || getEmailJsPublicKey();
         const rec = (document.getElementById('cfg-recipients-email')?.value || '').trim();
         const recipientsList = rec ? rec.split(',').map(e => e.trim()).filter(Boolean) : getEmailRecipients();
 
-        if (!key) {
-            await customAlert('Por favor, ingresá una clave de API de Resend primero.');
+        if (!key || !service || !template) {
+            await customAlert('Por favor, verificá que los campos de EmailJS (Service, Template, Public Key) estén completos.');
             return;
         }
 
-        const testPayload = {
-            from: sender,
-            to: recipientsList,
-            subject: '[AQA-Test] Correo de Prueba del Sistema Noreply',
-            html: `
-                <div style="font-family: Arial, sans-serif; color: #1e293b; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h2 style="color: #2563eb; margin-top: 0;">AQA-Test — Correo de Prueba</h2>
-                    <p>Este es un correo de prueba enviado desde <strong>AQA-Test (PWG)</strong> para verificar la conexión automática en segundo plano con el servicio de Resend.</p>
-                    <p style="font-size: 12px; color: #64748b;">Fecha y Hora: ${new Date().toLocaleString()}</p>
-                </div>
-            `
-        };
-
-        const testLoading = showLoadingDialog('Enviando correo de prueba a través de Resend...', 'AQA-Test');
+        const testLoading = showLoadingDialog('Enviando correo de prueba a través de EmailJS...', 'AQA-Test');
         try {
-            const res = await fetch(RESEND_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${key}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(testPayload)
-            });
+            const templateParams = {
+                to_email: recipientsList.join(', '),
+                subject: '[AQA-Test] Correo de Prueba de Integración',
+                message_html: `
+                    <div style="font-family: Arial, sans-serif; color: #1e293b; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <h2 style="color: #2563eb; margin-top: 0;">AQA-Test — Notificación de Prueba</h2>
+                        <p>Este es un correo de prueba enviado desde <strong>AQA-Test (PWG)</strong> para confirmar que la conexión en segundo plano con EmailJS está funcionando correctamente.</p>
+                        <p style="font-size: 12px; color: #64748b;">Fecha y Hora: ${new Date().toLocaleString()}</p>
+                    </div>
+                `
+            };
+
+            let success = false;
+            if (window.emailjs && typeof window.emailjs.send === 'function') {
+                window.emailjs.init({ publicKey: key });
+                await window.emailjs.send(service, template, templateParams, key);
+                success = true;
+            } else {
+                const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        service_id: service,
+                        template_id: template,
+                        user_id: key,
+                        template_params: templateParams
+                    })
+                });
+                if (res.ok) success = true;
+                else {
+                    const errText = await res.text();
+                    throw new Error(errText || `Error HTTP ${res.status}`);
+                }
+            }
+
             testLoading.close();
-            if (res.ok) {
+            if (success) {
                 await customAlert(
                     `✅ <strong>¡Correo de prueba enviado con éxito!</strong><br><br>` +
                     `Revisá la bandeja de entrada de:<br>• ${recipientsList.join('<br>• ')}`,
                     'AQA-Test — Envío Exitoso'
                 );
-            } else {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || `Error HTTP ${res.status}`);
             }
         } catch (err) {
             testLoading.close();
