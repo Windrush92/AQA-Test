@@ -916,7 +916,7 @@ function getEmailRecipients() {
     return DEFAULT_EMAIL_RECIPIENTS;
 }
 
-async function sendReportEmail(test) {
+function buildEmailProtocolHTML(test) {
     const d = test?.data || {};
     const regNumber = test?.regNumber || d.regNumber || 'TEST-0001';
     const marca = d.marca || '—';
@@ -926,71 +926,190 @@ async function sendReportEmail(test) {
     const fechaTesteo = formatDateDDMMAAAA(d['fecha-testeo']);
     const fechaFinFmt = formatDateDDMMAAAA(test?.completedAt || d['fecha-fin-testeo']);
     const estadoFinal = d.estadoFinal || 'Aprobado';
+    const estadoBg = estadoFinal === 'Aprobado' ? '#ecfdf5' : '#fef2f2';
+    const estadoColor = estadoFinal === 'Aprobado' ? '#059669' : '#dc2626';
+    const estadoBorder = estadoFinal === 'Aprobado' ? '#a7f3d0' : '#fecaca';
 
-    const subject = `[AQA-Test] Reporte de Testeo Técnico — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
+    const hasGas = Array.isArray(d.funciones) && (d.funciones.includes('Agua Con Gas') || d.funciones.includes('Finamente gasificada'));
+    const hasHotWater = Array.isArray(d.funciones) && (d.funciones.includes('Agua Caliente') || d.funciones.includes('Agua Muy Caliente'));
 
-    // Generate Base64 PDF in memory using html2pdf
-    let pdfDataUri = '';
-    try {
-        if (window.html2pdf && window.buildReportHTML) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = window.buildReportHTML(test.data, test);
-            tempDiv.style.width = '794px';
-            tempDiv.style.padding = '20px';
-            tempDiv.style.background = '#ffffff';
-            tempDiv.style.color = '#000000';
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.left = '-9999px';
-            document.body.appendChild(tempDiv);
-
-            const opt = {
-                margin: 8,
-                filename: `Reporte_Tecnico_${regNumber}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            pdfDataUri = await html2pdf().set(opt).from(tempDiv).outputPdf('datauristring');
-            document.body.removeChild(tempDiv);
+    function calcLmcMetrics(prefix) {
+        const entries = getLmcEntries(prefix);
+        const count = entries.length;
+        const obtainedL = count > 0 ? (count * 0.5) : (parseFloat(d[`litros-obtenidos-${prefix}`]) || 0);
+        const extVal = d[`extraccion-${prefix}`] || '00:00';
+        const recVal = d[`recuperacion-${prefix}`] || '00:00';
+        const extSec = parseMMSS(extVal);
+        const recSec = parseMMSS(recVal);
+        const totalSec = extSec + recSec;
+        let cph = 0;
+        let lph = 0;
+        if (totalSec > 0) {
+            cph = Math.ceil((3600 / totalSec) * 1.15);
+            lph = Math.round(cph * (obtainedL > 0 ? obtainedL : 5.0) * 10) / 10;
         }
-    } catch (err) {
-        console.warn('PDF generation for email attachment skipped or failed:', err);
+        return { obtainedL, extVal, recVal, totalVal: formatMMSS(totalSec), cph, lph };
     }
 
-    const htmlBody = `
-        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 620px; margin: 0 auto; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
-            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 22px 26px;">
-                <h2 style="margin: 0; font-size: 20px; letter-spacing: -0.5px;">AQA-Test — Protocolo de Testeo Técnico</h2>
-                <span style="font-size: 13px; opacity: 0.85; display: block; margin-top: 4px;">PWG Argentina • Notificación Oficial</span>
+    const metFria = calcLmcMetrics('fria');
+    const metGas = hasGas ? calcLmcMetrics('gas') : null;
+    const metCal = hasHotWater ? calcLmcMetrics('caliente') : null;
+
+    function getCaudal(type) {
+        const val = d[`tiempo-500-${type}`];
+        const sec = parseMMSS(val);
+        if (sec > 0) return `${Math.round((1800 / sec) * 10) / 10} L/h (${val} min)`;
+        return val ? `${val} min` : '—';
+    }
+
+    return `
+        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 660px; margin: 0 auto; line-height: 1.5; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 20px 24px;">
+                <h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">AQA-Test — Protocolo de Ensayo</h2>
+                <span style="font-size: 13px; opacity: 0.9;">PWG Argentina • Control de Calidad Oficial</span>
             </div>
-            <div style="padding: 24px 26px;">
-                <p style="margin-top: 0; font-size: 15px;">Estimados,</p>
-                <p style="font-size: 14px; color: #334155;">En el día de la fecha se ha finalizado el testeo técnico correspondiente al registro <strong>${regNumber}</strong>.</p>
+
+            <div style="padding: 22px 24px;">
+                <!-- Status Banner -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td>
+                                <span style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;">Registro Nº</span>
+                                <div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace;">${regNumber}</div>
+                            </td>
+                            <td style="text-align: right;">
+                                <span style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 2px;">Dictamen Final</span>
+                                <span style="display: inline-block; font-size: 14px; font-weight: 800; color: ${estadoColor}; background: ${estadoBg}; border: 1px solid ${estadoBorder}; padding: 3px 12px; border-radius: 6px;">
+                                    ${estadoFinal === 'Aprobado' ? '✅ APROBADO' : '❌ RECHAZADO'}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Equipment Table -->
+                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">1. Datos del Equipo y Testeo</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;">
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b; width: 35%;"><strong>Marca y Modelo:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${marca} ${modelo}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Número de Serie:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-family: monospace;">${numeroSerie}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Técnico Responsable:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a;">${tecnico}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Fecha Inicio / Fin:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a;">${fechaTesteo} ➔ ${fechaFinFmt}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Funciones Activas:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a;">${(d.funciones || []).join(', ') || '—'}</td>
+                    </tr>
+                </table>
+
+                <!-- Conditions & Environment -->
+                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">2. Condiciones de Entrada y Presiones</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;">
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b; width: 50%;"><strong>Presión Entrada de Agua:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${d['presion-agua-entrada'] || '—'} PSI</td>
+                    </tr>
+                    ${hasGas ? `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Presión de CO2 Medida:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${d['presion-co2-medida'] || '—'} Bar</td>
+                    </tr>` : ''}
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Temp. Ambiente / Agua Entrada:</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a;">${d['temp-ambiente'] || '—'} ºC / ${d['temp-agua-entrada'] || '—'} ºC</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Caudal 500ml (Fría):</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${getCaudal('fria')}</td>
+                    </tr>
+                    ${hasGas ? `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Caudal 500ml (Gas):</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${getCaudal('gas')}</td>
+                    </tr>` : ''}
+                    ${hasHotWater ? `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 8px; color: #64748b;"><strong>Caudal 500ml (Caliente):</strong></td>
+                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${getCaudal('caliente')}</td>
+                    </tr>` : ''}
+                </table>
+
+                <!-- LMC Performance Section -->
+                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">3. Rendimiento y Litros Continuos (LMC)</h3>
                 
-                <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 20px 0; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #0f172a; font-size: 15px;">Detalles del Equipo:</h3>
-                    <ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px; line-height: 1.8;">
-                        <li><strong>Registro:</strong> ${regNumber}</li>
-                        <li><strong>Marca y Modelo:</strong> ${marca} ${modelo}</li>
-                        <li><strong>Nº de Serie:</strong> ${numeroSerie}</li>
-                        <li><strong>Técnico a cargo:</strong> ${tecnico}</li>
-                        <li><strong>Fecha de Testeo:</strong> ${fechaTesteo} (Fin: ${fechaFinFmt})</li>
-                        <li><strong>Estado Final:</strong> <span style="color: ${estadoFinal === 'Aprobado' ? '#059669' : '#dc2626'}; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: ${estadoFinal === 'Aprobado' ? '#ecfdf5' : '#fef2f2'}; border: 1px solid ${estadoFinal === 'Aprobado' ? '#a7f3d0' : '#fecaca'};">${estadoFinal}</span></li>
-                    </ul>
+                <!-- Card Fría -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
+                    <div style="font-weight: 700; color: #1e3a8a; font-size: 13px; margin-bottom: 6px;">💧 AGUA FRÍA</div>
+                    <div style="font-size: 13px; color: #334155; line-height: 1.6;">
+                        • Litros continuos en rango: <strong>${metFria.obtainedL.toFixed(1)} L</strong> (Declarado: ${d['litros-continuos-proveedor'] || '—'} L)<br>
+                        • Extracción: <strong>${metFria.extVal} min</strong> | Recuperación: <strong>${metFria.recVal} min</strong><br>
+                        • Rendimiento del equipo: <strong style="color: #059669; font-size: 14px;">${metFria.lph} Litros/Hora</strong> (${metFria.cph} ciclos/h)
+                    </div>
                 </div>
 
-                <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 6px; margin: 18px 0; font-size: 13px; color: #334155;">
-                    📎 <strong>Archivo Adjunto:</strong> Se adjunta el Reporte Técnico Oficial (PDF) con el gráfico y tabla completa de mediciones.
-                </div>
+                ${hasGas ? `
+                <!-- Card Gas -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
+                    <div style="font-weight: 700; color: #1e3a8a; font-size: 13px; margin-bottom: 6px;">🫧 AGUA CON GAS (Hasta agotar mezclador)</div>
+                    <div style="font-size: 13px; color: #334155; line-height: 1.6;">
+                        • Litros extraídos hasta solo gas: <strong>${metGas.obtainedL.toFixed(1)} L</strong><br>
+                        • Extracción: <strong>${metGas.extVal} min</strong> | Recarga Gasatore: <strong>${metGas.recVal} min</strong><br>
+                        • Calidad global del gas: <strong>${'★'.repeat(parseInt(d['gas-calidad-val'] || 0))} (${d['gas-calidad-val'] || 0}/5)</strong><br>
+                        • Rendimiento del equipo: <strong style="color: #059669; font-size: 14px;">${metGas.lph} Litros/Hora</strong> (${metGas.cph} ciclos/h)
+                    </div>
+                </div>` : ''}
 
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 22px 0;">
-                <p style="font-size: 12px; color: #94a3b8; margin: 0; text-align: center;">
-                    Este es un correo generado automáticamente por el sistema <strong>AQA-Test (PWG)</strong>.<br>Por favor, no responder a esta casilla.
+                ${hasHotWater ? `
+                <!-- Card Caliente -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
+                    <div style="font-weight: 700; color: #1e3a8a; font-size: 13px; margin-bottom: 6px;">🔥 AGUA CALIENTE</div>
+                    <div style="font-size: 13px; color: #334155; line-height: 1.6;">
+                        • Litros continuos en rango: <strong>${metCal.obtainedL.toFixed(1)} L</strong><br>
+                        • Extracción: <strong>${metCal.extVal} min</strong> | Recuperación resistencia: <strong>${metCal.recVal} min</strong><br>
+                        • Rendimiento del equipo: <strong style="color: #059669; font-size: 14px;">${metCal.lph} Litros/Hora</strong> (${metCal.cph} ciclos/h)
+                    </div>
+                </div>` : ''}
+
+                ${d.observaciones ? `
+                <!-- Observaciones -->
+                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">4. Observaciones Finales</h3>
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #92400e; font-style: italic;">
+                    "${d.observaciones}"
+                </div>` : ''}
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 16px 0;">
+                <p style="font-size: 11px; color: #94a3b8; margin: 0; text-align: center; line-height: 1.4;">
+                    PWG Argentina • Departamento de Calidad y Servicio Técnico<br>
+                    Generado automáticamente por el sistema AQA-Test.
                 </p>
             </div>
         </div>
     `;
+}
+
+async function sendReportEmail(test) {
+    const d = test?.data || {};
+    const regNumber = test?.regNumber || d.regNumber || 'TEST-0001';
+    const marca = d.marca || '—';
+    const modelo = d.modelo || '—';
+    const numeroSerie = d['numero-serie'] || '—';
+    const tecnico = d.tecnico || '—';
+    const estadoFinal = d.estadoFinal || 'Aprobado';
+
+    const subject = `[AQA-Test] Protocolo de Ensayo — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
+    const htmlBody = buildEmailProtocolHTML(test);
 
     const serviceId = getEmailJsServiceId();
     const templateId = getEmailJsTemplateId();
@@ -1010,10 +1129,7 @@ async function sendReportEmail(test) {
         modelo: modelo,
         serie: numeroSerie,
         tecnico: tecnico,
-        estado_final: estadoFinal,
-        pdf_file: pdfDataUri,
-        attachment: pdfDataUri,
-        content: pdfDataUri
+        estado_final: estadoFinal
     };
 
     if (window.emailjs && typeof window.emailjs.send === 'function') {
