@@ -369,14 +369,13 @@ function renderHub(fetchCloud = true) {
                     <span class="tc-reg-hash">#</span>${regNumber}
                 </div>
                 <div class="tc-status-pill ${isDraft ? 'status-draft' : 'status-done'}">
-                    <span class="tc-status-dot"></span>
+                    <span class="tc-neon-dot ${isDraft ? 'neon-orange' : 'neon-green'}"></span>
                     ${isDraft ? 'En Progreso' : 'Finalizado'}
                 </div>
             </div>
 
-            <!-- Machine Avatar + Title -->
+            <!-- Machine Title Area -->
             <div class="tc-machine-header">
-                <div class="tc-machine-avatar">💧</div>
                 <div class="tc-title-block">
                     <h3 class="tc-marca">${marca}</h3>
                     <span class="tc-modelo">${modelo}</span>
