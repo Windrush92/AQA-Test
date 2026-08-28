@@ -592,12 +592,86 @@ function startWizard() {
     updateWizard();
 }
 
+const STEP_METADATA = {
+    1: { name: 'Datos Generales', sub: 'Información básica del equipo y técnico a cargo.' },
+    2: { name: 'Condiciones y Funcionalidades', sub: 'Mediciones de ambiente, presiones y test de componentes.' },
+    3: { name: 'Tiempos de Corte de Motor y Llenado (500ml)', sub: 'Medición de tiempos de corte y tiempo de llenado.' },
+    4: { name: 'Protocolo de Sanitizado y Purga', sub: 'Checklist obligatorio previo a pruebas de rendimiento.' },
+    5: { name: 'LMC — Agua Fría', sub: 'Prueba de litros continuos y recuperación de frío.' },
+    6: { name: 'LMC — Agua con Gas (Hasta agotar mezcla del gasificador)', sub: 'Prueba de litros continuos y calidad de gasificación.' },
+    7: { name: 'LMC — Agua Caliente', sub: 'Prueba de litros continuos y recuperación de calor.' },
+    8: { name: 'Observaciones y Conclusión', sub: 'Anotá cualquier detalle adicional sobre la prueba.' },
+    9: { name: 'Cierre y Reporte Final', sub: 'Definí el estado final y archivá el testeo en el Menú principal.' }
+};
+
+function hasGas() {
+    const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
+    return chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada');
+}
+
+function hasHotWater() {
+    const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
+    return chips.some(c => c.dataset.value === 'Agua Caliente' || c.dataset.value === 'Agua Muy Caliente');
+}
+
+function getActiveSteps() {
+    const steps = [1, 2, 3, 4, 5];
+    if (hasGas()) steps.push(6);
+    if (hasHotWater()) steps.push(7);
+    steps.push(8, 9);
+    return steps;
+}
+
+function updateConditionalFields() {
+    const showHot = hasHotWater();
+    const showGas = hasGas();
+
+    // Hot Water elements
+    const gRangoCaliente = document.getElementById('grp-rango-caliente');
+    const gOptCaliente = document.getElementById('grp-optimo-caliente');
+    const g500Caliente = document.getElementById('grp-500-caliente');
+    if (gRangoCaliente) gRangoCaliente.style.display = showHot ? 'flex' : 'none';
+    if (gOptCaliente) gOptCaliente.style.display = showHot ? 'flex' : 'none';
+    if (g500Caliente) g500Caliente.style.display = showHot ? 'flex' : 'none';
+
+    // Gas elements
+    const gPresionCo2 = document.getElementById('grp-presion-co2');
+    const gPresionCo2Medida = document.getElementById('grp-presion-co2-medida');
+    const gOptGas = document.getElementById('grp-optimo-gas');
+    const g500Gas = document.getElementById('grp-500-gas');
+    const discGasCorte = document.getElementById('disclaimer-gas-corte');
+    if (gPresionCo2) gPresionCo2.style.display = showGas ? 'flex' : 'none';
+    if (gPresionCo2Medida) gPresionCo2Medida.style.display = showGas ? 'flex' : 'none';
+    if (gOptGas) gOptGas.style.display = showGas ? 'flex' : 'none';
+    if (g500Gas) g500Gas.style.display = showGas ? 'flex' : 'none';
+    if (discGasCorte) discGasCorte.style.display = showGas ? 'block' : 'none';
+}
+
 function updateWizard() {
+    updateConditionalFields();
+    const activeSteps = getActiveSteps();
+    
+    // Ensure currentStep is an active step
+    if (!activeSteps.includes(currentStep)) {
+        const valid = activeSteps.find(s => s >= currentStep) || activeSteps[activeSteps.length - 1];
+        currentStep = valid;
+    }
+
     document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
     document.getElementById(`step-${currentStep}`)?.classList.add('active');
 
-    document.getElementById('progress-bar').style.width = `${(currentStep / TOTAL_STEPS) * 100}%`;
-    document.getElementById('step-indicator').textContent = `Paso ${currentStep} de ${TOTAL_STEPS}`;
+    const stepIndex = activeSteps.indexOf(currentStep) + 1;
+    const totalActive = activeSteps.length;
+
+    // Dynamic progress bar and step indicator
+    document.getElementById('progress-bar').style.width = `${(stepIndex / totalActive) * 100}%`;
+    document.getElementById('step-indicator').textContent = `Paso ${stepIndex} de ${totalActive}`;
+
+    // Update dynamic step title inside the current step header
+    const currentStepHeader = document.querySelector(`#step-${currentStep} .step-header h2`);
+    if (currentStepHeader && STEP_METADATA[currentStep]) {
+        currentStepHeader.textContent = `${stepIndex}. ${STEP_METADATA[currentStep].name}`;
+    }
 
     const test = getTest(activeTestId);
     const lbl = [test?.data?.marca, test?.data?.modelo].filter(Boolean).join(' ');
@@ -609,8 +683,8 @@ function updateWizard() {
         if (!fechaFin.value) fechaFin.value = new Date().toISOString().split('T')[0];
     }
 
-    document.getElementById('btn-prev').disabled = currentStep === 1;
-    const isLast = currentStep === TOTAL_STEPS;
+    document.getElementById('btn-prev').disabled = (stepIndex === 1);
+    const isLast = (stepIndex === totalActive);
     document.getElementById('btn-next').classList.toggle('hidden', isLast);
     document.getElementById('btn-finish').classList.toggle('hidden', !isLast);
     document.getElementById('btn-pdf-wizard').classList.toggle('hidden', !isLast);
@@ -618,7 +692,6 @@ function updateWizard() {
     refreshSeqForStep(currentStep);
     if (currentStep === 4) refreshStep4Checklist();
     updateMachetes();
-    updateGasDisclaimer();
     window.scrollTo(0, 0);
 }
 
@@ -690,13 +763,6 @@ function setupTimeInputMasks() {
     });
 }
 
-function updateGasDisclaimer() {
-    const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
-    const hasGas = chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada');
-    const disclaimer = document.getElementById('disclaimer-gas-corte');
-    if (disclaimer) disclaimer.style.display = hasGas ? 'block' : 'none';
-}
-
 // ======================== SEQUENTIAL CHECKLIST (Step 4) ========================
 // Each checklist item in step 4 unlocks the next one when checked
 const STEP4_ORDER = ['chk-peroxido', 'chk-circuito', 'chk-encendido', 'chk-retirar', 'chk-tirita'];
@@ -728,21 +794,6 @@ STEP4_ORDER.forEach(id => {
     });
 });
 
-function hasHotWater() {
-    const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
-    return chips.some(c => c.dataset.value === 'Agua Caliente' || c.dataset.value === 'Agua Muy Caliente');
-}
-
-function updateHotWaterVisibility() {
-    const show = hasHotWater();
-    const gRango = document.getElementById('grp-rango-caliente');
-    const gOpt = document.getElementById('grp-optimo-caliente');
-    const g500 = document.getElementById('grp-500-caliente');
-    if (gRango) gRango.style.display = show ? 'flex' : 'none';
-    if (gOpt) gOpt.style.display = show ? 'flex' : 'none';
-    if (g500) g500.style.display = show ? 'flex' : 'none';
-}
-
 // ======================== NAVIGATION ========================
 function validateCurrentStep() {
     if (currentStep === 1) {
@@ -763,6 +814,7 @@ function validateCurrentStep() {
         return lmcOk && recOk;
     }
     if (currentStep === 6) {
+        if (!hasGas()) return true;
         const lmcOk = GATE_CHECKS['6-99']();
         const recOk = (document.getElementById('recuperacion-gas')?.value || '').trim() !== '';
         const calOk = parseInt(document.getElementById('gas-calidad-val')?.value || '0') > 0;
@@ -787,16 +839,21 @@ document.getElementById('btn-next').addEventListener('click', async () => {
         document.getElementById('step4-error')?.classList.add('hidden');
     }
     saveState();
-    let next = currentStep + 1;
-    if (next === 7 && !hasHotWater()) next = 8;
-    currentStep = Math.min(TOTAL_STEPS, next);
+    const activeSteps = getActiveSteps();
+    const currentIdx = activeSteps.indexOf(currentStep);
+    if (currentIdx !== -1 && currentIdx < activeSteps.length - 1) {
+        currentStep = activeSteps[currentIdx + 1];
+    }
     updateWizard();
 });
+
 document.getElementById('btn-prev').addEventListener('click', () => {
     saveState();
-    let prev = currentStep - 1;
-    if (prev === 7 && !hasHotWater()) prev = 6;
-    currentStep = Math.max(1, prev);
+    const activeSteps = getActiveSteps();
+    const currentIdx = activeSteps.indexOf(currentStep);
+    if (currentIdx > 0) {
+        currentStep = activeSteps[currentIdx - 1];
+    }
     updateWizard();
 });
 document.getElementById('btn-wizard-back').addEventListener('click', () => { saveState(); renderHub(); });
@@ -1050,13 +1107,18 @@ const GATE_CHECKS = {
     '1-2': () => document.querySelectorAll('#canerias-group .chip.active').length > 0,
     '1-3': () => document.querySelectorAll('#funciones-group .chip.active').length > 0,
     '1-4': () => {
-        const req = ['temp-fria-min', 'temp-fria-max', 'presion-min', 'presion-max', 'presion-co2-min', 'presion-co2-max', 'rendimiento', 'litros-continuos-proveedor'];
+        const req = ['temp-fria-min', 'temp-fria-max', 'presion-min', 'presion-max', 'rendimiento', 'litros-continuos-proveedor'];
+        if (hasGas()) req.push('presion-co2-min', 'presion-co2-max');
         if (hasHotWater()) req.push('temp-caliente-min', 'temp-caliente-max');
         return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
     },
 
     // Step 2: Condiciones y Funcionalidades
-    '2-1': () => ['temp-ambiente', 'temp-agua-entrada', 'presion-agua-entrada', 'presion-co2-medida'].every(id => (document.getElementById(id)?.value || '').trim() !== ''),
+    '2-1': () => {
+        const req = ['temp-ambiente', 'temp-agua-entrada', 'presion-agua-entrada'];
+        if (hasGas()) req.push('presion-co2-medida');
+        return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
+    },
     '2-2': () => {
         const vent = document.getElementById('chk-ventilacion')?.checked;
         const disp = document.getElementById('chk-dispensar')?.checked;
@@ -1075,19 +1137,13 @@ const GATE_CHECKS = {
     '3-1': () => {
         const req = ['tiempo-optimo-fria'];
         if (hasHotWater()) req.push('tiempo-optimo-caliente');
-        const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
-        if (chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada')) {
-            req.push('tiempo-optimo-gas');
-        }
+        if (hasGas()) req.push('tiempo-optimo-gas');
         return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
     },
     '3-2': () => {
         const req = ['tiempo-500-fria'];
         if (hasHotWater()) req.push('tiempo-500-caliente');
-        const chips = Array.from(document.querySelectorAll('#funciones-group .chip.active'));
-        if (chips.some(c => c.dataset.value === 'Agua Con Gas' || c.dataset.value === 'Finamente gasificada')) {
-            req.push('tiempo-500-gas');
-        }
+        if (hasGas()) req.push('tiempo-500-gas');
         return req.every(id => (document.getElementById(id)?.value || '').trim() !== '');
     },
 
@@ -1096,7 +1152,7 @@ const GATE_CHECKS = {
 
     // Steps 5,6,7: LMC
     '5-99': () => getLmcEntries('fria').length > 0,
-    '6-99': () => getLmcEntries('gas').length > 0,
+    '6-99': () => !hasGas() || getLmcEntries('gas').length > 0,
     '7-99': () => !hasHotWater() || getLmcEntries('caliente').length > 0
 };
 
@@ -1563,8 +1619,7 @@ function loadState(test) {
     if (d.funciones) document.querySelectorAll('#funciones-group .chip').forEach(c => c.classList.toggle('active', d.funciones.includes(c.dataset.value)));
     if (d.estadoFinal) document.querySelector(`#estado-final-group .chip[data-value="${d.estadoFinal}"]`)?.classList.add('active');
 
-    updateHotWaterVisibility();
-    updateGasDisclaimer();
+    updateConditionalFields();
 
     // Global stars
     const sv = parseInt(d['gas-calidad-val'] || 0);
@@ -1679,8 +1734,8 @@ function init() {
             } else {
                 chip.classList.toggle('active');
                 if (group.id === 'funciones-group') {
-                    updateHotWaterVisibility();
-                    updateGasDisclaimer();
+                    updateConditionalFields();
+                    updateWizard();
                 }
             }
             refreshSeqForStep(currentStep);

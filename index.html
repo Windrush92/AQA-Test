@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="AQA-Test">
     <link rel="apple-touch-icon" href="logo-aqa.png">
     <link rel="icon" type="image/png" href="logo-aqa.png">
-    <link rel="stylesheet" href="styles.css?v=2.8">
+    <link rel="stylesheet" href="styles.css?v=2.9">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -256,7 +256,7 @@
                             <span class="unit-suffix">PSI</span>
                         </div>
                     </div>
-                    <div class="input-group">
+                    <div class="input-group" id="grp-presion-co2">
                         <label>Rango Presión de CO2</label>
                         <div class="range-inputs">
                             <input type="number" id="presion-co2-min" placeholder="Mín" step="0.1">
@@ -334,7 +334,7 @@
                             <span class="unit-suffix">PSI</span>
                         </div>
                     </div>
-                    <div class="input-group">
+                    <div class="input-group" id="grp-presion-co2-medida">
                         <label>Presión de CO2 <small class="hint">*Con tubo lleno*</small></label>
                         <div class="input-wrapper">
                             <input type="number" id="presion-co2-medida" placeholder="0" step="0.1">
@@ -572,12 +572,6 @@
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
-                <div class="cycle-result-box mt-2 mb-2" id="cycle-result-fria" style="display:none; padding: 1rem; background: var(--surface-2); border-radius: 8px; border-left: 4px solid var(--primary);">
-                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-fria">00:00</span> min</p>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--primary);"><strong>Rendimiento Estimado:</strong> <span id="cycle-cph-fria">0</span> ciclos/hora</p>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--success); font-weight: 700;"><strong>Litros de esta función por hora:</strong> <span id="cycle-lph-fria">0</span> L/h</p>
-                </div>
             </div>
         </section>
 
@@ -677,12 +671,6 @@
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
-                <div class="cycle-result-box mt-2 mb-2" id="cycle-result-gas" style="display:none; padding: 1rem; background: var(--surface-2); border-radius: 8px; border-left: 4px solid var(--primary);">
-                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-gas">00:00</span> min</p>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--primary);"><strong>Rendimiento Estimado:</strong> <span id="cycle-cph-gas">0</span> ciclos/hora</p>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--success); font-weight: 700;"><strong>Litros de esta función por hora:</strong> <span id="cycle-lph-gas">0</span> L/h</p>
-                </div>
 
                 <div class="section-title mt-2">Calidad Global de Gasificación</div>
                 <p class="hint-text">Valoración general final (1 = pésimo — 5 = excelente)</p>
@@ -780,12 +768,6 @@
                         <input type="text" id="recuperacion-caliente" placeholder="mm:ss" maxlength="8" class="time-input">
                         <span class="unit-suffix">min</span>
                     </div>
-                </div>
-                <div class="cycle-result-box mt-2 mb-2" id="cycle-result-caliente" style="display:none; padding: 1rem; background: var(--surface-2); border-radius: 8px; border-left: 4px solid var(--primary);">
-                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Resultado del Ciclo</h3>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><strong>Tiempo Total (Extracción + Recuperación):</strong> <span id="cycle-total-caliente">00:00</span> min</p>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--primary);"><strong>Rendimiento Estimado:</strong> <span id="cycle-cph-caliente">0</span> ciclos/hora</p>
-                    <p style="margin: 0.2rem 0; font-size: 0.9rem; color: var(--success); font-weight: 700;"><strong>Litros de esta función por hora:</strong> <span id="cycle-lph-caliente">0</span> L/h</p>
                 </div>
             </div>
         </section>
@@ -897,8 +879,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=2.8"></script>
-<script src="pdf-generator.js?v=2.8"></script>
+<script src="app.js?v=2.9"></script>
+<script src="pdf-generator.js?v=2.9"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
