@@ -841,7 +841,7 @@ const DEFAULT_EMAIL_RECIPIENTS = ['ivanc@pwg.com.ar', 'sebastian.garcia@pwg.com.
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
 function getResendApiKey() {
-    return localStorage.getItem('AQA_RESEND_API_KEY') || '';
+    return localStorage.getItem('AQA_RESEND_API_KEY') || 're_grB92cZ1_Pw5mGsdvaFxSKX16rDnefGhH';
 }
 
 function getSenderEmail() {
