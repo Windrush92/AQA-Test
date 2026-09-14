@@ -923,173 +923,78 @@ function buildEmailProtocolHTML(test) {
     const modelo = d.modelo || '—';
     const numeroSerie = d['numero-serie'] || '—';
     const tecnico = d.tecnico || '—';
-    const fechaTesteo = formatDateDDMMAAAA(d['fecha-testeo']);
-    const fechaFinFmt = formatDateDDMMAAAA(test?.completedAt || d['fecha-fin-testeo']);
+    const fechaFinFmt = formatDateDDMMAAAA(test?.completedAt || d['fecha-fin-testeo']) || formatDateDDMMAAAA(new Date().toISOString());
     const estadoFinal = d.estadoFinal || 'Aprobado';
-    const estadoBg = estadoFinal === 'Aprobado' ? '#ecfdf5' : '#fef2f2';
-    const estadoColor = estadoFinal === 'Aprobado' ? '#059669' : '#dc2626';
-    const estadoBorder = estadoFinal === 'Aprobado' ? '#a7f3d0' : '#fecaca';
-
-    const hasGas = Array.isArray(d.funciones) && (d.funciones.includes('Agua Con Gas') || d.funciones.includes('Finamente gasificada'));
-    const hasHotWater = Array.isArray(d.funciones) && (d.funciones.includes('Agua Caliente') || d.funciones.includes('Agua Muy Caliente'));
-
-    function calcLmcMetrics(prefix) {
-        const entries = getLmcEntries(prefix);
-        const count = entries.length;
-        const obtainedL = count > 0 ? (count * 0.5) : (parseFloat(d[`litros-obtenidos-${prefix}`]) || 0);
-        const extVal = d[`extraccion-${prefix}`] || '00:00';
-        const recVal = d[`recuperacion-${prefix}`] || '00:00';
-        const extSec = parseMMSS(extVal);
-        const recSec = parseMMSS(recVal);
-        const totalSec = extSec + recSec;
-        let cph = 0;
-        let lph = 0;
-        if (totalSec > 0) {
-            cph = Math.ceil((3600 / totalSec) * 1.15);
-            lph = Math.round(cph * (obtainedL > 0 ? obtainedL : 5.0) * 10) / 10;
-        }
-        return { obtainedL, extVal, recVal, totalVal: formatMMSS(totalSec), cph, lph };
-    }
-
-    const metFria = calcLmcMetrics('fria');
-    const metGas = hasGas ? calcLmcMetrics('gas') : null;
-    const metCal = hasHotWater ? calcLmcMetrics('caliente') : null;
-
-    function getCaudal(type) {
-        const val = d[`tiempo-500-${type}`];
-        const sec = parseMMSS(val);
-        if (sec > 0) return `${Math.round((1800 / sec) * 10) / 10} L/h (${val} min)`;
-        return val ? `${val} min` : '—';
-    }
+    const isAprobado = estadoFinal.toLowerCase() === 'aprobado';
+    const estadoBg = isAprobado ? '#ecfdf5' : '#fef2f2';
+    const estadoColor = isAprobado ? '#059669' : '#dc2626';
+    const estadoBorder = isAprobado ? '#a7f3d0' : '#fecaca';
 
     return `
-        <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 660px; margin: 0 auto; line-height: 1.5; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #ffffff;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 580px; margin: 0 auto; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 20px 24px;">
-                <h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">AQA-Test — Protocolo de Ensayo</h2>
-                <span style="font-size: 13px; opacity: 0.9;">PWG Argentina • Control de Calidad Oficial</span>
+            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 24px 28px;">
+                <h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.3px;">AQA-Test — Notificación de Testeo Finalizado</h2>
+                <span style="font-size: 13px; opacity: 0.9; display: block; margin-top: 4px;">PWG Argentina • Control de Calidad Técnico</span>
             </div>
 
-            <div style="padding: 22px 24px;">
-                <!-- Status Banner -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="padding: 24px 28px;">
+                <!-- Main Greeting & Message -->
+                <p style="font-size: 15px; margin-top: 0; margin-bottom: 20px; color: #334155;">
+                    Le informamos que el ensayo técnico correspondiente al registro <strong>#${regNumber}</strong> ha sido <strong>finalizado el día de hoy (${fechaFinFmt})</strong> por el técnico responsable <strong>${tecnico}</strong>.
+                </p>
+
+                <!-- Status Card -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; margin-bottom: 22px;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td>
-                                <span style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;">Registro Nº</span>
+                                <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Registro Nº</span>
                                 <div style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace;">${regNumber}</div>
                             </td>
                             <td style="text-align: right;">
-                                <span style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 2px;">Dictamen Final</span>
-                                <span style="display: inline-block; font-size: 14px; font-weight: 800; color: ${estadoColor}; background: ${estadoBg}; border: 1px solid ${estadoBorder}; padding: 3px 12px; border-radius: 6px;">
-                                    ${estadoFinal === 'Aprobado' ? '✅ APROBADO' : '❌ RECHAZADO'}
+                                <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px;">Resultado Final</span>
+                                <span style="display: inline-block; font-size: 13px; font-weight: 800; color: ${estadoColor}; background: ${estadoBg}; border: 1px solid ${estadoBorder}; padding: 4px 14px; border-radius: 20px;">
+                                    ${isAprobado ? '✅ APROBADO' : '❌ RECHAZADO'}
                                 </span>
                             </td>
                         </tr>
                     </table>
                 </div>
 
-                <!-- Equipment Table -->
-                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">1. Datos del Equipo y Testeo</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;">
+                <!-- Equipment Details Table -->
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
                     <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b; width: 35%;"><strong>Marca y Modelo:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${marca} ${modelo}</td>
+                        <td style="padding: 10px 8px; color: #64748b; width: 40%;"><strong>Equipo:</strong></td>
+                        <td style="padding: 10px 8px; color: #0f172a; font-weight: 700;">${marca} ${modelo}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Número de Serie:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-family: monospace;">${numeroSerie}</td>
+                        <td style="padding: 10px 8px; color: #64748b;"><strong>Número de Serie:</strong></td>
+                        <td style="padding: 10px 8px; color: #0f172a; font-family: monospace;">${numeroSerie}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Técnico Responsable:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a;">${tecnico}</td>
+                        <td style="padding: 10px 8px; color: #64748b;"><strong>Técnico:</strong></td>
+                        <td style="padding: 10px 8px; color: #0f172a;">${tecnico}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Fecha Inicio / Fin:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a;">${fechaTesteo} ➔ ${fechaFinFmt}</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Funciones Activas:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a;">${(d.funciones || []).join(', ') || '—'}</td>
+                        <td style="padding: 10px 8px; color: #64748b;"><strong>Fecha de Cierre:</strong></td>
+                        <td style="padding: 10px 8px; color: #0f172a;">${fechaFinFmt}</td>
                     </tr>
                 </table>
-
-                <!-- Conditions & Environment -->
-                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">2. Condiciones de Entrada y Presiones</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;">
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b; width: 50%;"><strong>Presión Entrada de Agua:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${d['presion-agua-entrada'] || '—'} PSI</td>
-                    </tr>
-                    ${hasGas ? `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Presión de CO2 Medida:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${d['presion-co2-medida'] || '—'} Bar</td>
-                    </tr>` : ''}
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Temp. Ambiente / Agua Entrada:</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a;">${d['temp-ambiente'] || '—'} ºC / ${d['temp-agua-entrada'] || '—'} ºC</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Caudal 500ml (Fría):</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${getCaudal('fria')}</td>
-                    </tr>
-                    ${hasGas ? `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Caudal 500ml (Gas):</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${getCaudal('gas')}</td>
-                    </tr>` : ''}
-                    ${hasHotWater ? `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 8px; color: #64748b;"><strong>Caudal 500ml (Caliente):</strong></td>
-                        <td style="padding: 6px 8px; color: #0f172a; font-weight: bold;">${getCaudal('caliente')}</td>
-                    </tr>` : ''}
-                </table>
-
-                <!-- LMC Performance Section -->
-                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">3. Rendimiento y Litros Continuos (LMC)</h3>
-                
-                <!-- Card Fría -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
-                    <div style="font-weight: 700; color: #1e3a8a; font-size: 13px; margin-bottom: 6px;">💧 AGUA FRÍA</div>
-                    <div style="font-size: 13px; color: #334155; line-height: 1.6;">
-                        • Litros continuos en rango: <strong>${metFria.obtainedL.toFixed(1)} L</strong> (Declarado: ${d['litros-continuos-proveedor'] || '—'} L)<br>
-                        • Extracción: <strong>${metFria.extVal} min</strong> | Recuperación: <strong>${metFria.recVal} min</strong><br>
-                        • Rendimiento del equipo: <strong style="color: #059669; font-size: 14px;">${metFria.lph} Litros/Hora</strong> (${metFria.cph} ciclos/h)
-                    </div>
-                </div>
-
-                ${hasGas ? `
-                <!-- Card Gas -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
-                    <div style="font-weight: 700; color: #1e3a8a; font-size: 13px; margin-bottom: 6px;">🫧 AGUA CON GAS (Hasta agotar mezclador)</div>
-                    <div style="font-size: 13px; color: #334155; line-height: 1.6;">
-                        • Litros extraídos hasta solo gas: <strong>${metGas.obtainedL.toFixed(1)} L</strong><br>
-                        • Extracción: <strong>${metGas.extVal} min</strong> | Recarga Gasatore: <strong>${metGas.recVal} min</strong><br>
-                        • Calidad global del gas: <strong>${'★'.repeat(parseInt(d['gas-calidad-val'] || 0))} (${d['gas-calidad-val'] || 0}/5)</strong><br>
-                        • Rendimiento del equipo: <strong style="color: #059669; font-size: 14px;">${metGas.lph} Litros/Hora</strong> (${metGas.cph} ciclos/h)
-                    </div>
-                </div>` : ''}
-
-                ${hasHotWater ? `
-                <!-- Card Caliente -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
-                    <div style="font-weight: 700; color: #1e3a8a; font-size: 13px; margin-bottom: 6px;">🔥 AGUA CALIENTE</div>
-                    <div style="font-size: 13px; color: #334155; line-height: 1.6;">
-                        • Litros continuos en rango: <strong>${metCal.obtainedL.toFixed(1)} L</strong><br>
-                        • Extracción: <strong>${metCal.extVal} min</strong> | Recuperación resistencia: <strong>${metCal.recVal} min</strong><br>
-                        • Rendimiento del equipo: <strong style="color: #059669; font-size: 14px;">${metCal.lph} Litros/Hora</strong> (${metCal.cph} ciclos/h)
-                    </div>
-                </div>` : ''}
 
                 ${d.observaciones ? `
                 <!-- Observaciones -->
-                <h3 style="font-size: 13px; text-transform: uppercase; color: #2563eb; margin: 18px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">4. Observaciones Finales</h3>
-                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #92400e; font-style: italic;">
-                    "${d.observaciones}"
+                <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #92400e; margin-bottom: 20px;">
+                    <strong>Observaciones del técnico:</strong><br>
+                    ${d.observaciones}
                 </div>` : ''}
 
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 16px 0;">
+                <!-- Informational footer box -->
+                <div style="background: #f1f5f9; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #475569; margin-bottom: 16px; line-height: 1.5;">
+                    ℹ️ <em>Los datos técnicos completos, mediciones de caudal, tiempos de ciclo y protocolo detallado se encuentran registrados y archivados en la plataforma <strong>AQA-Test</strong> para su consulta o exportación en PDF.</em>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0 14px 0;">
                 <p style="font-size: 11px; color: #94a3b8; margin: 0; text-align: center; line-height: 1.4;">
                     PWG Argentina • Departamento de Calidad y Servicio Técnico<br>
                     Generado automáticamente por el sistema AQA-Test.
@@ -1108,7 +1013,7 @@ async function sendReportEmail(test) {
     const tecnico = d.tecnico || '—';
     const estadoFinal = d.estadoFinal || 'Aprobado';
 
-    const subject = `[AQA-Test] Protocolo de Ensayo — ${regNumber} — ${marca} ${modelo} (${numeroSerie})`;
+    const subject = `[AQA-Test] Testeo Finalizado #${regNumber} — ${marca} ${modelo} (${tecnico})`;
     const htmlBody = buildEmailProtocolHTML(test);
 
     const serviceId = getEmailJsServiceId();
@@ -1339,22 +1244,54 @@ function getLmcEntries(prefix) {
     return entries;
 }
 
+function getManufacturerMaxLiters() {
+    // 1. Check declared Rendimiento (L/h)
+    const rendInp = parseFloat(document.getElementById('rendimiento')?.value);
+    if (!isNaN(rendInp) && rendInp > 0) return rendInp;
+
+    // 2. Check declared Litros Continuos (L)
+    const lProvInp = parseFloat(document.getElementById('litros-continuos-proveedor')?.value);
+    if (!isNaN(lProvInp) && lProvInp > 0) return lProvInp;
+
+    // 3. Fallback to active test data
+    if (activeTestId) {
+        const test = getTest(activeTestId);
+        const d = test?.data || {};
+        const rVal = parseFloat(d['rendimiento']);
+        if (!isNaN(rVal) && rVal > 0) return rVal;
+        const lVal = parseFloat(d['litros-continuos-proveedor']);
+        if (!isNaN(lVal) && lVal > 0) return lVal;
+    }
+    return Infinity;
+}
+
 function renderLmcHero(prefix) {
     const entries = getLmcEntries(prefix);
     const count = entries.length;
     const nextLiters = ((count + 1) * 0.5).toFixed(1);
     const totalLiters = (count * 0.5).toFixed(1);
 
+    const isOutOfRange = entries.length > 0 && !entries[entries.length - 1].inRange;
+    const maxLiters = getManufacturerMaxLiters();
+    const isMaxReached = isFinite(maxLiters) && (count * 0.5 >= maxLiters);
+    const isFinished = isOutOfRange || isMaxReached;
+
     // Update Badges & Labels
     const curLitEl = document.getElementById(`lmc-current-liters-${prefix}`);
-    if (curLitEl) curLitEl.textContent = `${nextLiters} L`;
+    if (curLitEl) {
+        if (isFinished) {
+            curLitEl.textContent = `${totalLiters} L (${isOutOfRange ? 'Corte Temp' : 'Fin'})`;
+        } else {
+            curLitEl.textContent = `${nextLiters} L`;
+        }
+    }
 
     const inputLbl = document.getElementById(`lmc-input-label-${prefix}`);
-    if (inputLbl) inputLbl.textContent = `${nextLiters} L`;
+    if (inputLbl) inputLbl.textContent = isFinished ? `${totalLiters} L` : `${nextLiters} L`;
 
     if (prefix === 'gas') {
         const qLbl = document.getElementById('lmc-quality-label-gas');
-        if (qLbl) qLbl.textContent = `${nextLiters} L`;
+        if (qLbl) qLbl.textContent = isFinished ? `${totalLiters} L` : `${nextLiters} L`;
     }
 
     const totRegEl = document.getElementById(`lmc-total-registered-${prefix}`);
@@ -1362,6 +1299,17 @@ function renderLmcHero(prefix) {
 
     const countEl = document.getElementById(`lmc-count-${prefix}`);
     if (countEl) countEl.textContent = count;
+
+    // Inputs disable / enable
+    const inp = document.getElementById(`lmc-input-${prefix}`);
+    const btnSubmit = document.getElementById(`btn-submit-lmc-${prefix}`);
+    if (inp) {
+        inp.disabled = isFinished;
+        inp.placeholder = isFinished ? 'Extracción finalizada' : '0.0';
+    }
+    if (btnSubmit) {
+        btnSubmit.disabled = isFinished;
+    }
 
     // Render History Feed Chips
     const feedContainer = document.getElementById(`lmc-feed-${prefix}`);
@@ -1406,6 +1354,15 @@ function registerLmcEntry(prefix) {
     const entries = getLmcEntries(prefix);
     const nextIdx = entries.length;
 
+    // Check if extraction is already finished before adding new entry
+    const isAlreadyOutOfRange = entries.length > 0 && !entries[entries.length - 1].inRange;
+    const maxLiters = getManufacturerMaxLiters();
+    const isAlreadyMaxReached = isFinite(maxLiters) && (entries.length * 0.5 >= maxLiters);
+    if (isAlreadyOutOfRange || isAlreadyMaxReached) {
+        renderLmcHero(prefix);
+        return;
+    }
+
     test.data[`lmc-${prefix}-${nextIdx}`] = tempVal.toFixed(1);
     if (prefix === 'gas') {
         test.data[`gas-q-${nextIdx}`] = currentGasQuality;
@@ -1417,11 +1374,12 @@ function registerLmcEntry(prefix) {
     const feedback = document.getElementById(`lmc-feedback-${prefix}`);
     const inRange = !shouldLockNext(prefix, tempVal);
     const literTxt = ((nextIdx + 1) * 0.5).toFixed(1);
+    const currentTotalLiters = (nextIdx + 1) * 0.5;
+    const isMaxReached = isFinite(maxLiters) && (currentTotalLiters >= maxLiters);
 
     if (!inRange) {
-        // Automatically stop extraction stopwatch
+        // Temperature went out of range: stop extraction & auto-start recovery timer
         stopStopwatch(prefix);
-        // Automatically start recovery stopwatch
         startStopwatch('rec_' + prefix);
 
         if (feedback) {
@@ -1429,7 +1387,19 @@ function registerLmcEntry(prefix) {
             feedback.textContent = `⚠️ ${literTxt} L (${tempVal.toFixed(1)} ºC) Fuera de rango. Extracción finalizada y cronómetro de recuperación iniciado automáticamente.`;
             setTimeout(() => {
                 if (feedback.textContent.includes(literTxt)) feedback.textContent = '';
-            }, 4500);
+            }, 5000);
+        }
+    } else if (isMaxReached) {
+        // Reached nominal manufacturer capacity / liters: stop extraction & auto-start recovery timer
+        stopStopwatch(prefix);
+        startStopwatch('rec_' + prefix);
+
+        if (feedback) {
+            feedback.className = 'lmc-feedback-msg in-range';
+            feedback.textContent = `🎯 ¡Límite del fabricante alcanzado (${literTxt} L)! Extracción finalizada con éxito y cronómetro de recuperación iniciado automáticamente.`;
+            setTimeout(() => {
+                if (feedback.textContent.includes(literTxt)) feedback.textContent = '';
+            }, 5000);
         }
     } else {
         if (feedback) {
@@ -1444,7 +1414,11 @@ function registerLmcEntry(prefix) {
     inp.value = '';
     renderLmcHero(prefix);
     saveState();
-    inp.focus();
+    if (!inRange || isMaxReached) {
+        inp.blur();
+    } else {
+        inp.focus();
+    }
 }
 
 function undoLastLmcEntry(prefix) {
@@ -1643,17 +1617,20 @@ function updateMachetes() {
     const fMax = document.getElementById('temp-fria-max')?.value || '--';
     const cMin = document.getElementById('temp-caliente-min')?.value || '--';
     const cMax = document.getElementById('temp-caliente-max')?.value || '--';
-    const lProv = document.getElementById('litros-continuos-proveedor')?.value || '--';
+    const rend = document.getElementById('rendimiento')?.value;
+    const lProv = document.getElementById('litros-continuos-proveedor')?.value;
     const pEntrada = document.getElementById('presion-agua-entrada')?.value || '--';
+
+    const maxLitersDisplay = rend || lProv || '--';
 
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     set('machete-fria', `${fMin} – ${fMax}`);
     set('machete-gas', `${fMin} – ${fMax}`);
     set('machete-caliente', `${cMin} – ${cMax}`);
 
-    set('machete-litros-fria', lProv);
-    set('machete-litros-gas', lProv);
-    set('machete-litros-caliente', lProv);
+    set('machete-litros-fria', maxLitersDisplay);
+    set('machete-litros-gas', maxLitersDisplay);
+    set('machete-litros-caliente', maxLitersDisplay);
     set('machete-presion-entrada', pEntrada);
 
     updateObtainedLiters('fria');
@@ -1906,14 +1883,9 @@ function init() {
             resetStopwatch(type);
         });
 
-        // Recovery stopwatch
-        const btnRecStart = document.getElementById(`btn-sw-start-rec-${type}`);
+        // Recovery stopwatch (Starts automatically when extraction finishes or stops)
         const btnRecStop = document.getElementById(`btn-sw-stop-rec-${type}`);
         const btnRecReset = document.getElementById(`btn-sw-reset-rec-${type}`);
-
-        btnRecStart?.addEventListener('click', () => {
-            startStopwatch(`rec_${type}`);
-        });
 
         btnRecStop?.addEventListener('click', () => {
             stopStopwatch(`rec_${type}`);
