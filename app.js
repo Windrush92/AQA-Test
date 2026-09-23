@@ -736,11 +736,7 @@ function setupTimeInputMasks() {
             if (!val) return;
             if (/^\d{1,2}$/.test(val)) {
                 const n = parseInt(val, 10);
-                if (input.id.includes('500')) {
-                    input.value = `00:${n.toString().padStart(2, '0')}`;
-                } else {
-                    input.value = `${n.toString().padStart(2, '0')}:00`;
-                }
+                input.value = `${n.toString().padStart(2, '0')}:00`;
             } else if (/^\d{1,2}:\d{1,2}:\d{1,2}$/.test(val)) {
                 const [h, m, s] = val.split(':').map(x => parseInt(x, 10));
                 input.value = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
@@ -1274,15 +1270,44 @@ function renderLmcHero(prefix) {
     const isOutOfRange = entries.length > 0 && !entries[entries.length - 1].inRange;
     const maxLiters = getManufacturerMaxLiters();
     const isMaxReached = isFinite(maxLiters) && (count * 0.5 >= maxLiters);
-    const isFinished = isOutOfRange || isMaxReached;
+
+    // Check 1-hour extraction limit
+    const extInp = document.getElementById(`extraccion-${prefix}`);
+    const extVal = extInp?.value || (activeTestId && (getTest(activeTestId)?.data || {})[`extraccion-${prefix}`]) || '00:00';
+    const isTimeReached = parseMMSS(extVal) >= 3600;
+
+    const isFinished = isOutOfRange || isMaxReached || isTimeReached;
+
+    // Subtitle in widget top
+    const subEl = document.getElementById(`lmc-sub-${prefix}`);
+    if (subEl) {
+        if (isOutOfRange) {
+            subEl.innerHTML = '<span style="color:var(--danger); font-weight:800;">⛔ CORTE POR TEMPERATURA</span>';
+        } else if (isTimeReached) {
+            subEl.innerHTML = '<span style="color:var(--warning); font-weight:800;">⏱️ LÍMITE 1 HORA ALCANZADO</span>';
+        } else if (isMaxReached) {
+            subEl.innerHTML = '<span style="color:var(--success); font-weight:800;">🎯 LÍMITE FABRICANTE ALCANZADO</span>';
+        } else {
+            const defLabel = prefix === 'caliente' ? 'DISPENSANDO CALIENTE' : (prefix === 'gas' ? 'DISPENSANDO CON GAS' : 'DISPENSANDO');
+            subEl.textContent = defLabel;
+        }
+    }
 
     // Update Badges & Labels
     const curLitEl = document.getElementById(`lmc-current-liters-${prefix}`);
     if (curLitEl) {
-        if (isFinished) {
-            curLitEl.textContent = `${totalLiters} L (${isOutOfRange ? 'Corte Temp' : 'Fin'})`;
+        if (isOutOfRange) {
+            curLitEl.textContent = `${totalLiters} L (Corte Temp)`;
+            curLitEl.style.fontSize = '1.3rem';
+        } else if (isTimeReached) {
+            curLitEl.textContent = `${totalLiters} L (1 Hora)`;
+            curLitEl.style.fontSize = '1.3rem';
+        } else if (isMaxReached) {
+            curLitEl.textContent = `${totalLiters} L (Fin)`;
+            curLitEl.style.fontSize = '1.3rem';
         } else {
             curLitEl.textContent = `${nextLiters} L`;
+            curLitEl.style.fontSize = '';
         }
     }
 
@@ -1305,10 +1330,16 @@ function renderLmcHero(prefix) {
     const btnSubmit = document.getElementById(`btn-submit-lmc-${prefix}`);
     if (inp) {
         inp.disabled = isFinished;
-        inp.placeholder = isFinished ? 'Extracción finalizada' : '0.0';
+        inp.placeholder = isFinished ? '—' : '0.0';
+        if (isFinished) inp.value = '';
     }
     if (btnSubmit) {
         btnSubmit.disabled = isFinished;
+        if (isFinished) {
+            btnSubmit.innerHTML = '<span>🔒 Extracción Finalizada</span>';
+        } else {
+            btnSubmit.innerHTML = '<span>➕ Registrar Toma</span> <kbd class="key-hint">Enter ↵</kbd>';
+        }
     }
 
     // Render History Feed Chips
@@ -1358,7 +1389,10 @@ function registerLmcEntry(prefix) {
     const isAlreadyOutOfRange = entries.length > 0 && !entries[entries.length - 1].inRange;
     const maxLiters = getManufacturerMaxLiters();
     const isAlreadyMaxReached = isFinite(maxLiters) && (entries.length * 0.5 >= maxLiters);
-    if (isAlreadyOutOfRange || isAlreadyMaxReached) {
+    const extVal = document.getElementById(`extraccion-${prefix}`)?.value || (test.data || {})[`extraccion-${prefix}`] || '00:00';
+    const isAlreadyTimeReached = parseMMSS(extVal) >= 3600;
+
+    if (isAlreadyOutOfRange || isAlreadyMaxReached || isAlreadyTimeReached) {
         renderLmcHero(prefix);
         return;
     }
@@ -1504,7 +1538,42 @@ function updateStopwatchDisplay(key) {
     const sw = stopwatches[key];
     if (!sw) return;
     const ms = sw.interval ? (Date.now() - sw.startTime + sw.elapsedMs) : sw.elapsedMs;
-    const formatted = formatMMSS(Math.floor(ms / 1000));
+    const totalSec = Math.floor(ms / 1000);
+
+    // Extraction 1-hour cutoff check
+    if (!key.startsWith('rec_') && totalSec >= 3600 && sw.interval) {
+        clearInterval(sw.interval);
+        sw.interval = null;
+        sw.elapsedMs = 3600 * 1000;
+
+        const formatted = '01:00:00';
+        const display = document.getElementById(`sw-display-${key}`);
+        if (display) display.textContent = formatted;
+
+        const input = document.getElementById(`extraccion-${key}`);
+        if (input) {
+            input.value = formatted;
+            updateCycleDisplay(key);
+        }
+
+        // Auto-start recovery stopwatch
+        startStopwatch(`rec_${key}`);
+
+        const feedback = document.getElementById(`lmc-feedback-${key}`);
+        if (feedback) {
+            feedback.className = 'lmc-feedback-msg out-range';
+            feedback.textContent = `⏱️ ¡Tiempo límite de 1 hora alcanzado! Extracción finalizada automáticamente y cronómetro de recuperación iniciado.`;
+            setTimeout(() => {
+                feedback.textContent = '';
+            }, 6000);
+        }
+
+        renderLmcHero(key);
+        saveState();
+        return;
+    }
+
+    const formatted = formatMMSS(totalSec);
     
     if (key.startsWith('rec_')) {
         const type = key.replace('rec_', '');
@@ -1644,10 +1713,16 @@ function updateCaudal500() {
         const inp = document.getElementById(`tiempo-500-${type}`);
         const badge = document.getElementById(`caudal-500-${type}`);
         if (!inp || !badge) return;
-        const sec = parseMMSS(inp.value);
+        const raw = inp.value.trim();
+        let sec = 0;
+        if (raw.includes(':')) {
+            sec = parseMMSS(raw);
+        } else {
+            sec = parseInt(raw, 10) || 0;
+        }
         if (sec > 0) {
             const lph = Math.round((1800 / sec) * 10) / 10;
-            badge.textContent = `Caudal: ${lph} L/h`;
+            badge.textContent = `Caudal: ${lph} L/h (${sec} seg.)`;
             badge.style.display = 'block';
         } else {
             badge.style.display = 'none';
@@ -1728,10 +1803,14 @@ function loadState(test) {
     const sv = parseInt(d['gas-calidad-val'] || 0);
     if (sv > 0) { const sr = document.querySelector('.star-rating[data-id="gas-calidad"]'); if (sr) sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= sv)); }
 
-    // Dynamic LMC cells sequential restore
-    renderLmcHero('fria');
-    renderLmcHero('gas');
-    renderLmcHero('caliente');
+    // Clean legacy MM:SS from tiempo-500 inputs if present
+    ['fria', 'caliente', 'gas'].forEach(type => {
+        const inp = document.getElementById(`tiempo-500-${type}`);
+        if (inp && inp.value && String(inp.value).includes(':')) {
+            const s = parseMMSS(inp.value);
+            if (s > 0) inp.value = s;
+        }
+    });
 
     // Restore stopwatches
     ['fria', 'gas', 'caliente'].forEach(prefix => {
@@ -1755,6 +1834,11 @@ function loadState(test) {
 
         updateCycleDisplay(prefix);
     });
+
+    // Dynamic LMC cells sequential restore (runs after stopwatches are restored)
+    renderLmcHero('fria');
+    renderLmcHero('gas');
+    renderLmcHero('caliente');
 
     updateMachetes();
     validateDates();
@@ -1885,14 +1969,24 @@ function init() {
 
         // Recovery stopwatch (Starts automatically when extraction finishes or stops)
         const btnRecStop = document.getElementById(`btn-sw-stop-rec-${type}`);
-        const btnRecReset = document.getElementById(`btn-sw-reset-rec-${type}`);
 
         btnRecStop?.addEventListener('click', () => {
             stopStopwatch(`rec_${type}`);
         });
+    });
 
-        btnRecReset?.addEventListener('click', () => {
-            resetStopwatch(`rec_${type}`);
+    // Real-time update for tiempo-500 (bottle filling seconds)
+    ['fria', 'caliente', 'gas'].forEach(type => {
+        const inp = document.getElementById(`tiempo-500-${type}`);
+        inp?.addEventListener('input', () => {
+            updateCaudal500();
+            refreshSeqForStep(currentStep);
+            saveState();
+        });
+        inp?.addEventListener('change', () => {
+            updateCaudal500();
+            refreshSeqForStep(currentStep);
+            saveState();
         });
     });
 

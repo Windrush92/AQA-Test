@@ -200,9 +200,16 @@ window.buildReportHTML = function(data, test) {
     }
 
     function getCaudal500Text(val) {
-        const sec = parseMMSS(val);
+        if (!val) return '';
+        const sec = String(val).includes(':') ? parseMMSS(val) : (parseInt(val, 10) || 0);
         if (sec > 0) return ` <small style="color:#0284c7;font-weight:600">(${Math.round(1800/sec)} L/h)</small>`;
         return '';
+    }
+
+    function format500Sec(val) {
+        if (!val) return '—';
+        const sec = String(val).includes(':') ? parseMMSS(val) : (parseInt(val, 10) || 0);
+        return sec > 0 ? `${sec} seg.` : `${val}`;
     }
 
     // === Global gas stars ===
@@ -263,9 +270,9 @@ window.buildReportHTML = function(data, test) {
             <div><strong>Corte Motor (Fría):</strong> ${v('tiempo-optimo-fria')} min</div>
             ${hasHotWater ? `<div><strong>Alcanzar Temp. Caliente:</strong> ${v('tiempo-optimo-caliente')} min</div>` : ''}
             ${hasGas ? `<div><strong>Corte Motor (Gas):</strong> ${v('tiempo-optimo-gas') || v('tiempo-optimo-fria')} min <small>(mismo sistema)</small></div>` : ''}
-            <div><strong>Llenado Fría 500ml:</strong> ${v('tiempo-500-fria')} min${getCaudal500Text(d['tiempo-500-fria'])}</div>
-            ${hasHotWater ? `<div><strong>Llenado Caliente 500ml:</strong> ${v('tiempo-500-caliente')} min${getCaudal500Text(d['tiempo-500-caliente'])}</div>` : ''}
-            ${hasGas ? `<div><strong>Llenado Con Gas 500ml:</strong> ${v('tiempo-500-gas')} min${getCaudal500Text(d['tiempo-500-gas'])}</div>` : ''}
+            <div><strong>Llenado Fría 500ml:</strong> ${format500Sec(d['tiempo-500-fria'])}${getCaudal500Text(d['tiempo-500-fria'])}</div>
+            ${hasHotWater ? `<div><strong>Llenado Caliente 500ml:</strong> ${format500Sec(d['tiempo-500-caliente'])}${getCaudal500Text(d['tiempo-500-caliente'])}</div>` : ''}
+            ${hasGas ? `<div><strong>Llenado Con Gas 500ml:</strong> ${format500Sec(d['tiempo-500-gas'])}${getCaudal500Text(d['tiempo-500-gas'])}</div>` : ''}
         </div>
     </div>
 
