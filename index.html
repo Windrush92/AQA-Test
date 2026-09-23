@@ -176,7 +176,7 @@
                     </div>
                     <div class="input-group">
                         <label>Técnico Evaluador <span class="req">*</span></label>
-                        <input type="text" id="tecnico" placeholder="Nombre completo">
+                        <input type="text" id="tecnico" name="nombre_tecnico_evaluador" placeholder="Nombre completo" autocomplete="off" data-lpignore="true">
                     </div>
                     <div class="input-group">
                         <label>Fecha de Ingreso <span class="req">*</span></label>
@@ -370,7 +370,7 @@
                     <div class="input-group">
                         <label>Tiempo Llenado Tanque / Banco</label>
                         <div class="input-wrapper">
-                            <input type="text" id="tiempo-llenado-tanque" placeholder="mm:ss" maxlength="5" class="time-input">
+                            <input type="text" id="tiempo-llenado-tanque" name="tiempo_llenado_tanque" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric">
                             <span class="unit-suffix">min</span>
                         </div>
                     </div>
@@ -404,15 +404,15 @@
                 <div class="form-grid">
                     <div class="input-group">
                         <label>Agua Fría</label>
-                        <div class="input-wrapper"><input type="text" id="tiempo-optimo-fria" placeholder="mm:ss" maxlength="5" class="time-input"><span class="unit-suffix">min</span></div>
+                        <div class="input-wrapper"><input type="text" id="tiempo-optimo-fria" name="tiempo_corte_motor_fria" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric"><span class="unit-suffix">min</span></div>
                     </div>
                     <div class="input-group" id="grp-optimo-caliente">
                         <label>Agua Caliente</label>
-                        <div class="input-wrapper"><input type="text" id="tiempo-optimo-caliente" placeholder="mm:ss" maxlength="5" class="time-input"><span class="unit-suffix">min</span></div>
+                        <div class="input-wrapper"><input type="text" id="tiempo-optimo-caliente" name="tiempo_corte_motor_caliente" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric"><span class="unit-suffix">min</span></div>
                     </div>
                     <div class="input-group" id="grp-optimo-gas">
                         <label>Agua Con Gas</label>
-                        <div class="input-wrapper"><input type="text" id="tiempo-optimo-gas" placeholder="mm:ss" maxlength="5" class="time-input"><span class="unit-suffix">min</span></div>
+                        <div class="input-wrapper"><input type="text" id="tiempo-optimo-gas" name="tiempo_corte_motor_gas" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric"><span class="unit-suffix">min</span></div>
                     </div>
                 </div>
             </div>
@@ -566,7 +566,7 @@
                         </div>
                     </div>
                     <div class="input-wrapper recovery-input">
-                        <input type="text" id="recuperacion-fria" placeholder="mm:ss" maxlength="8" class="time-input">
+                        <input type="text" id="recuperacion-fria" name="tiempo_recuperacion_fria" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric">
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
@@ -663,7 +663,7 @@
                         </div>
                     </div>
                     <div class="input-wrapper recovery-input">
-                        <input type="text" id="recuperacion-gas" placeholder="mm:ss" maxlength="8" class="time-input">
+                        <input type="text" id="recuperacion-gas" name="tiempo_recuperacion_gas" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric">
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
@@ -759,7 +759,7 @@
                         </div>
                     </div>
                     <div class="input-wrapper recovery-input">
-                        <input type="text" id="recuperacion-caliente" placeholder="mm:ss" maxlength="8" class="time-input">
+                        <input type="text" id="recuperacion-caliente" name="tiempo_recuperacion_caliente" placeholder="mm:ss" maxlength="8" class="time-input" autocomplete="off" data-lpignore="true" data-form-type="other" inputmode="numeric">
                         <span class="unit-suffix">min</span>
                     </div>
                 </div>
@@ -877,8 +877,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=3.0"></script>
-<script src="pdf-generator.js?v=3.0"></script>
+<script src="app.js?v=3.1"></script>
+<script src="pdf-generator.js?v=3.1"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

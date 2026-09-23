@@ -47,7 +47,7 @@ function showCustomDialog({ title = 'AQA-Test', message, type = 'alert', confirm
         if (type === 'prompt') {
             bodyEl.innerHTML = `
                 <div style="margin-bottom:0.75rem; font-size:0.95rem;">${message}</div>
-                <input type="${inputType}" id="custom-dialog-input" placeholder="${placeholder}" style="width:100%; padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:1rem; box-sizing:border-box;" autocomplete="off">
+                <input type="${inputType}" id="custom-dialog-input" name="admin_prompt_input" placeholder="${placeholder}" style="width:100%; padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border); background:var(--input-bg); color:var(--text-main); font-size:1rem; box-sizing:border-box;" autocomplete="new-password" data-lpignore="true" data-form-type="other">
             `;
         } else {
             bodyEl.innerHTML = `<div style="font-size:0.95rem; line-height:1.5;">${message}</div>`;
