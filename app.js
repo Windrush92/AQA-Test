@@ -143,7 +143,26 @@ function formatDateDDMMAAAA(val) {
     return str;
 }
 
-function getAllTests() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+function getAllTests() {
+    const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    let modified = false;
+    list.forEach(t => {
+        if (t && t.data) {
+            ['fria', 'caliente', 'gas'].forEach(type => {
+                const k = `tiempo-500-${type}`;
+                if (t.data[k] !== undefined && t.data[k] !== null && String(t.data[k]).includes(':')) {
+                    const sec = parseMMSS(String(t.data[k]));
+                    t.data[k] = sec > 0 ? String(sec) : '';
+                    modified = true;
+                }
+            });
+        }
+    });
+    if (modified) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+    return list;
+}
 function saveAllTests(tests) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tests)); }
 function getTest(id) { return getAllTests().find(t => t.id === id) || null; }
 
@@ -1766,6 +1785,21 @@ window.saveState = function () {
         d[`ciclos_${p}`] = [...document.querySelectorAll(`#ciclos-${p}-body tr`)].map(tr => [...tr.querySelectorAll('input')].map(i => i.value));
     });
 
+    // Ensure tiempo-500 is always stored as clean integer seconds
+    ['fria', 'caliente', 'gas'].forEach(type => {
+        const k = `tiempo-500-${type}`;
+        if (d[k] !== undefined && d[k] !== null) {
+            const raw = String(d[k]).trim();
+            if (raw.includes(':')) {
+                const s = parseMMSS(raw);
+                d[k] = s > 0 ? String(s) : '';
+            } else if (raw) {
+                const s = parseInt(raw, 10);
+                d[k] = !isNaN(s) && s > 0 ? String(s) : '';
+            }
+        }
+    });
+
     if (!test.regNumber) {
         test.regNumber = d.regNumber || 'TEST-0001';
     }
@@ -1780,12 +1814,32 @@ function loadState(test) {
     const d = test.data || {};
     currentStep = test.currentStep || 1;
 
+    // Clean legacy MM:SS from test.data before loading into DOM
+    ['fria', 'caliente', 'gas'].forEach(type => {
+        const k = `tiempo-500-${type}`;
+        if (d[k] !== undefined && d[k] !== null) {
+            const strVal = String(d[k]).trim();
+            if (strVal.includes(':')) {
+                const sec = parseMMSS(strVal);
+                d[k] = sec > 0 ? String(sec) : '';
+            }
+        }
+    });
+
     document.querySelectorAll('#view-wizard input[id]:not([type="hidden"]), #view-wizard textarea[id], #view-wizard select[id]').forEach(el => {
         if (d[el.id] === undefined) return;
         if (el.type === 'checkbox') { el.checked = !!d[el.id]; el.dispatchEvent(new Event('change')); }
         else el.value = d[el.id];
     });
     document.querySelectorAll('#view-wizard input[type="hidden"][id]').forEach(el => { if (d[el.id] !== undefined) el.value = d[el.id]; });
+
+    // Explicitly guarantee tiempo-500 inputs display clean integer seconds
+    ['fria', 'caliente', 'gas'].forEach(type => {
+        const inp = document.getElementById(`tiempo-500-${type}`);
+        if (inp && d[`tiempo-500-${type}`] !== undefined) {
+            inp.value = d[`tiempo-500-${type}`];
+        }
+    });
 
     // Restore regNumber
     const regEl = document.getElementById('reg-number');
@@ -1802,15 +1856,6 @@ function loadState(test) {
     // Global stars
     const sv = parseInt(d['gas-calidad-val'] || 0);
     if (sv > 0) { const sr = document.querySelector('.star-rating[data-id="gas-calidad"]'); if (sr) sr.querySelectorAll('span').forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= sv)); }
-
-    // Clean legacy MM:SS from tiempo-500 inputs if present
-    ['fria', 'caliente', 'gas'].forEach(type => {
-        const inp = document.getElementById(`tiempo-500-${type}`);
-        if (inp && inp.value && String(inp.value).includes(':')) {
-            const s = parseMMSS(inp.value);
-            if (s > 0) inp.value = s;
-        }
-    });
 
     // Restore stopwatches
     ['fria', 'gas', 'caliente'].forEach(prefix => {

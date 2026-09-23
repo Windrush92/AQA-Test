@@ -497,10 +497,10 @@
                 <div class="section-title">Tiempo de Extracción — Agua Fría</div>
                 <div class="stopwatch-container mb-2">
                     <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
-                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
+                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem; line-height: 1.5;">
                             <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
                             <li>Dispensar agua de forma continua de a 0.5L, ingresando la temperatura y presionando <strong>Enter</strong> en cada toma.</li>
-                            <li>Cuando la temperatura supere la indicada por el proveedor, detener la extracción presionando <strong>⏹ Detener</strong>.</li>
+                            <li>La extracción se detendrá automáticamente al alcanzar los parámetros establecidos (límite de litros por hora del fabricante, temperatura fuera de rango o 1 hora máxima).</li>
                         </ul>
                         <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
                             <span>📋 Rango Temp: <strong id="machete-fria">--</strong> ºC</span>
@@ -510,7 +510,6 @@
                     <div class="stopwatch-display" id="sw-display-fria">00:00</div>
                     <div class="stopwatch-controls">
                         <button class="btn btn-primary" id="btn-sw-start-fria">▶ Iniciar</button>
-                        <button class="btn btn-danger" id="btn-sw-stop-fria">⏹ Detener</button>
                         <button class="btn btn-secondary" id="btn-sw-reset-fria">🔄 Reiniciar</button>
                     </div>
                     <input type="hidden" id="extraccion-fria" value="00:00">
@@ -586,8 +585,7 @@
                         <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem; line-height: 1.5;">
                             <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
                             <li>Extraer agua con gas de forma continua de a 0.5L, ingresando la temperatura y seleccionando la <strong>calidad del gas</strong> en cada toma. Presionar <strong>Enter</strong> para registrar.</li>
-                            <li>Cuando el mezclador (gasatore) se quede sin agua y <strong>solo tire GAS</strong> (hasta agotar mezcla del gasificador), detener la extracción presionando <strong>⏹ Detener</strong>.</li>
-                            <li>Al detener la extracción se iniciará automáticamente el cronómetro de recuperación hasta que el motor corte.</li>
+                            <li>La extracción se detendrá automáticamente al alcanzar los parámetros establecidos (límite de litros por hora del fabricante, temperatura fuera de rango o 1 hora máxima).</li>
                         </ul>
                         <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
                             <span>📋 Rango Temp. Fría: <strong id="machete-gas">--</strong> ºC</span>
@@ -597,7 +595,6 @@
                     <div class="stopwatch-display" id="sw-display-gas">00:00</div>
                     <div class="stopwatch-controls">
                         <button class="btn btn-primary" id="btn-sw-start-gas">▶ Iniciar</button>
-                        <button class="btn btn-danger" id="btn-sw-stop-gas">⏹ Detener</button>
                         <button class="btn btn-secondary" id="btn-sw-reset-gas">🔄 Reiniciar</button>
                     </div>
                     <input type="hidden" id="extraccion-gas" value="00:00">
@@ -687,11 +684,10 @@
                 <div class="section-title">Tiempo de Extracción — Agua Caliente</div>
                 <div class="stopwatch-container mb-2">
                     <div class="form-help mb-2" style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary);">
-                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem;">
+                        <ul style="margin: 0; padding-left: 1.2rem; margin-bottom: 0.5rem; line-height: 1.5;">
                             <li>Presionar <strong>▶ Iniciar</strong> para comenzar el cronómetro de extracción.</li>
                             <li>Dispensar agua de forma continua de a 0.5L, ingresando la temperatura y presionando <strong>Enter</strong> en cada toma.</li>
-                            <li>Cuando la temperatura descienda por debajo de la indicada por el proveedor, detener la extracción presionando <strong>⏹ Detener</strong>.</li>
-                            <li>Al detener la extracción se iniciará automáticamente el cronómetro de recuperación hasta que corte la resistencia.</li>
+                            <li>La extracción se detendrá automáticamente al alcanzar los parámetros establecidos (límite de litros por hora del fabricante, temperatura fuera de rango o 1 hora máxima).</li>
                         </ul>
                         <div class="alert-box info" style="margin: 0; padding: 0.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
                             <span>📋 Rango Temp: <strong id="machete-caliente">--</strong> ºC</span>
@@ -701,7 +697,6 @@
                     <div class="stopwatch-display" id="sw-display-caliente">00:00</div>
                     <div class="stopwatch-controls">
                         <button class="btn btn-primary" id="btn-sw-start-caliente">▶ Iniciar</button>
-                        <button class="btn btn-danger" id="btn-sw-stop-caliente">⏹ Detener</button>
                         <button class="btn btn-secondary" id="btn-sw-reset-caliente">🔄 Reiniciar</button>
                     </div>
                     <input type="hidden" id="extraccion-caliente" value="00:00">
@@ -877,14 +872,25 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=3.1"></script>
-<script src="pdf-generator.js?v=3.1"></script>
+<script src="app.js?v=3.2"></script>
+<script src="pdf-generator.js?v=3.2"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('✅ Service Worker activo y registrado'))
+        navigator.serviceWorker.register('./sw.js?v=16')
+            .then(reg => {
+                console.log('✅ Service Worker activo y registrado');
+                reg.update();
+            })
             .catch(err => console.log('Service Worker error:', err));
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+                refreshing = true;
+                window.location.reload();
+            }
+        });
     });
 }
 </script>
