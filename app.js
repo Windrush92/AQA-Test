@@ -435,7 +435,8 @@ function renderHub(fetchCloud = true) {
                 ${isDraft 
                     ? `<button class="btn btn-primary" onclick="continueTest('${test.id}')">▶ Continuar Testeo</button>`
                     : `<button class="btn btn-outline" onclick="viewReportHub('${test.id}')">📄 Ver Informe</button>
-                       <button class="btn btn-secondary" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>`
+                       <button class="btn btn-secondary" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>
+                       <button class="btn btn-outline" onclick="reopenTest('${test.id}')" title="Reabrir testeo para editar tomas o datos">🔓 Reabrir</button>`
                 }
                 <button class="btn-danger-ghost" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)">🗑️</button>
             </div>
@@ -450,6 +451,35 @@ window.viewReportHub = function (id) { openReportModal(id); };
 window.generatePdfForTest = function (id) {
     const test = getTest(id);
     if (test && window.generateAndPrint) window.generateAndPrint(test.data, test);
+};
+
+window.reopenTest = async function (id) {
+    const test = getTest(id);
+    if (!test) return;
+    const ok = await customConfirm(`¿Deseas reabrir el testeo <strong>${test.regNumber || 'TEST'}</strong> para editar sus datos o agregar mediciones?`, 'AQA-Test — Reabrir Testeo', {
+        confirmText: 'Sí, Reabrir',
+        cancelText: 'Cancelar'
+    });
+    if (!ok) return;
+
+    test.status = 'draft';
+    test.completedAt = null;
+    test.updated_at = new Date().toISOString();
+    upsertTest(test);
+
+    const sb = getSupabase();
+    if (sb) {
+        sb.from('tests').update({
+            status: 'draft',
+            completed_at: null,
+            updated_at: new Date().toISOString()
+        }).eq('id', id).then(({ error }) => {
+            if (error) console.warn('Supabase reopen error:', error);
+        });
+    }
+
+    renderHub();
+    await customAlert(`El testeo <strong>${test.regNumber || 'TEST'}</strong> ha sido reabierto exitosamente. Ahora podés continuar editándolo.`, 'Testeo Reabierto');
 };
 
 window.confirmDelete = async function (id) {
@@ -617,7 +647,7 @@ const STEP_METADATA = {
     3: { name: 'Tiempos de Corte de Motor y Llenado (500ml)', sub: 'Medición de tiempos de corte y tiempo de llenado.' },
     4: { name: 'Protocolo de Sanitizado y Purga', sub: 'Checklist obligatorio previo a pruebas de rendimiento.' },
     5: { name: 'LMC — Agua Fría', sub: 'Prueba de litros continuos y recuperación de frío.' },
-    6: { name: 'LMC — Agua con Gas (Hasta agotar mezcla del gasificador)', sub: 'Prueba de litros continuos y calidad de gasificación.' },
+    6: { name: 'LMC — Agua con Gas (Hasta agotar mezcla del gasatore)', sub: 'Prueba de litros continuos y calidad de gasificación.' },
     7: { name: 'LMC — Agua Caliente', sub: 'Prueba de litros continuos y recuperación de calor.' },
     8: { name: 'Observaciones y Conclusión', sub: 'Anotá cualquier detalle adicional sobre la prueba.' },
     9: { name: 'Cierre y Reporte Final', sub: 'Definí el estado final y archivá el testeo en el Menú principal.' }
@@ -824,27 +854,80 @@ function validateCurrentStep() {
         return STEP4_ORDER.every(id => document.getElementById(id)?.checked);
     }
     if (currentStep === 5) {
+        if (stopwatches.fria?.interval !== null || stopwatches.rec_fria?.interval !== null) return false;
         const lmcOk = GATE_CHECKS['5-99']();
-        const recOk = (document.getElementById('recuperacion-fria')?.value || '').trim() !== '';
+        const recVal = (document.getElementById('recuperacion-fria')?.value || '').trim();
+        const recOk = recVal !== '' && recVal !== '00:00';
         return lmcOk && recOk;
     }
     if (currentStep === 6) {
         if (!hasGas()) return true;
+        if (stopwatches.gas?.interval !== null || stopwatches.rec_gas?.interval !== null) return false;
         const lmcOk = GATE_CHECKS['6-99']();
-        const recOk = (document.getElementById('recuperacion-gas')?.value || '').trim() !== '';
+        const recVal = (document.getElementById('recuperacion-gas')?.value || '').trim();
+        const recOk = recVal !== '' && recVal !== '00:00';
         const calOk = parseInt(document.getElementById('gas-calidad-val')?.value || '0') > 0;
         return lmcOk && recOk && calOk;
     }
     if (currentStep === 7) {
         if (!hasHotWater()) return true;
+        if (stopwatches.caliente?.interval !== null || stopwatches.rec_caliente?.interval !== null) return false;
         const lmcOk = GATE_CHECKS['7-99']();
-        const recOk = (document.getElementById('recuperacion-caliente')?.value || '').trim() !== '';
+        const recVal = (document.getElementById('recuperacion-caliente')?.value || '').trim();
+        const recOk = recVal !== '' && recVal !== '00:00';
         return lmcOk && recOk;
     }
     return true; // Step 8 (observaciones) is optional
 }
 
 document.getElementById('btn-next').addEventListener('click', async () => {
+    // Stopwatch and LMC validation with explicit messages
+    if (currentStep === 5) {
+        if (stopwatches.fria?.interval !== null) {
+            await customAlert('El cronómetro de extracción de Agua Fría sigue en marcha. La prueba debe finalizar antes de continuar.', 'Extracción en curso');
+            return;
+        }
+        if (stopwatches.rec_fria?.interval !== null) {
+            await customAlert('El cronómetro de recuperación está corriendo. Debés presionar "⏹ Detener (Corte Motor)" antes de pasar al siguiente paso.', 'Cronómetro en marcha');
+            return;
+        }
+        const recVal = (document.getElementById('recuperacion-fria')?.value || '').trim();
+        if (!recVal || recVal === '00:00') {
+            await customAlert('Debés registrar y detener el cronómetro de recuperación antes de pasar al siguiente paso.', 'Recuperación pendiente');
+            return;
+        }
+    }
+    if (currentStep === 6 && hasGas()) {
+        if (stopwatches.gas?.interval !== null) {
+            await customAlert('El cronómetro de extracción de Agua con Gas sigue en marcha. La prueba debe finalizar antes de continuar.', 'Extracción en curso');
+            return;
+        }
+        if (stopwatches.rec_gas?.interval !== null) {
+            await customAlert('El cronómetro de recuperación está corriendo. Debés presionar "⏹ Detener (Corte Motor)" antes de pasar al siguiente paso.', 'Cronómetro en marcha');
+            return;
+        }
+        const recVal = (document.getElementById('recuperacion-gas')?.value || '').trim();
+        if (!recVal || recVal === '00:00') {
+            await customAlert('Debés registrar y detener el cronómetro de recuperación antes de pasar al siguiente paso.', 'Recuperación pendiente');
+            return;
+        }
+    }
+    if (currentStep === 7 && hasHotWater()) {
+        if (stopwatches.caliente?.interval !== null) {
+            await customAlert('El cronómetro de extracción de Agua Caliente sigue en marcha. La prueba debe finalizar antes de continuar.', 'Extracción en curso');
+            return;
+        }
+        if (stopwatches.rec_caliente?.interval !== null) {
+            await customAlert('El cronómetro de recuperación está corriendo. Debés presionar "⏹ Detener (Corte Resistencia)" antes de pasar al siguiente paso.', 'Cronómetro en marcha');
+            return;
+        }
+        const recVal = (document.getElementById('recuperacion-caliente')?.value || '').trim();
+        if (!recVal || recVal === '00:00') {
+            await customAlert('Debés registrar y detener el cronómetro de recuperación antes de pasar al siguiente paso.', 'Recuperación pendiente');
+            return;
+        }
+    }
+
     if (!validateCurrentStep()) {
         await customAlert('Por favor, completá todos los campos obligatorios de este paso antes de continuar.');
         if (currentStep === 4) document.getElementById('step4-error')?.classList.remove('hidden');

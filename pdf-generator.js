@@ -166,7 +166,7 @@ window.buildReportHTML = function(data, test) {
             cph = Math.ceil(cph * 1.15);
         }
 
-        const extSub = prefix === 'gas' ? ' <small style="color:#64748b;font-weight:400;">(Hasta agotar mezcla del gasificador)</small>' : '';
+        const extSub = prefix === 'gas' ? ' <small style="color:#64748b;font-weight:400;">(Hasta agotar mezcla del gasatore)</small>' : '';
         const recSub = prefix === 'gas' ? ' <small style="color:#64748b;font-weight:400;">(recarga del gasatore)</small>' : '';
 
         const obtainedL = parseFloat(getObtainedLiters(prefix)) || 0;
@@ -297,7 +297,7 @@ window.buildReportHTML = function(data, test) {
         <h2>5.2 LMC — Agua con Gas &nbsp;<small style="font-weight:400;font-size:0.85rem">Ref. Rango Fría: ${v('temp-fria-min')} – ${v('temp-fria-max')} ºC</small></h2>
         <div style="display:flex;gap:1.5rem;margin-bottom:0.35rem;font-size:0.82rem">
             <span><strong>Declarado Proveedor:</strong> ${v('litros-continuos-proveedor')} L</span>
-            <span><strong>Obtenido en Test (Hasta agotar mezcla del gasificador):</strong> ${getObtainedLiters('gas')} L</span>
+            <span><strong>Obtenido en Test (Hasta agotar mezcla del gasatore):</strong> ${getObtainedLiters('gas')} L</span>
         </div>
         ${renderLmcTables('gas', 'ºC', true)}
         <p style="font-size:0.8rem;margin:0.35rem 0"><strong>Calidad Global:</strong> <span style="color:#d97706;font-size:0.9rem">${globalStars}</span> (${globalStarVal}/5)</p>
