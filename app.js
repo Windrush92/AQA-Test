@@ -2011,6 +2011,19 @@ function init() {
         applyTheme(newTheme);
     });
 
+    // Force refresh / cache clear button for installed PWAs
+    document.getElementById('btn-force-refresh')?.addEventListener('click', async () => {
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+        }
+        window.location.reload(true);
+    });
+
     // Setup LMC Hero quick-entry event listeners
     ['fria', 'gas', 'caliente'].forEach(prefix => {
         const inp = document.getElementById(`lmc-input-${prefix}`);
