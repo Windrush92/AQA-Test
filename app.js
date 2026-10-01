@@ -436,7 +436,7 @@ function renderHub(fetchCloud = true) {
                     ? `<button class="btn btn-primary" onclick="continueTest('${test.id}')">▶ Continuar Testeo</button>`
                     : `<button class="btn btn-outline" onclick="viewReportHub('${test.id}')">📄 Ver Informe</button>
                        <button class="btn btn-secondary" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>
-                       <button class="btn btn-outline" onclick="reopenTest('${test.id}')" title="Reabrir testeo para editar tomas o datos">🔓 Reabrir</button>`
+                       <button class="btn btn-outline" onclick="reopenTest('${test.id}')" title="Reabrir testeo (Requiere Admin)">🔓 Reabrir</button>`
                 }
                 <button class="btn-danger-ghost" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)">🗑️</button>
             </div>
@@ -456,6 +456,20 @@ window.generatePdfForTest = function (id) {
 window.reopenTest = async function (id) {
     const test = getTest(id);
     if (!test) return;
+
+    const password = await customPrompt(
+        '🔒 <strong>Acceso de Administrador Requerido</strong><br><br>Ingresá la contraseña de administrador para reabrir este testeo finalizado:',
+        'AQA-Test — Permisos de Administrador',
+        { inputType: 'password', placeholder: 'Contraseña de admin...', confirmText: 'Verificar', cancelText: 'Cancelar' }
+    );
+
+    if (password === null) return; // Cancelled
+
+    if (password !== 'Horeca-Office26') {
+        await customAlert('⛔ Contraseña de administrador incorrecta. No tenés permisos para reabrir este testeo.', 'AQA-Test — Acceso Denegado');
+        return;
+    }
+
     const ok = await customConfirm(`¿Deseas reabrir el testeo <strong>${test.regNumber || 'TEST'}</strong> para editar sus datos o agregar mediciones?`, 'AQA-Test — Reabrir Testeo', {
         confirmText: 'Sí, Reabrir',
         cancelText: 'Cancelar'
