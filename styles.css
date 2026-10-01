@@ -386,22 +386,29 @@ small, .hint { font-size: 0.78rem; color: var(--warning); font-style: italic; }
 }
 
 .tc-footer {
-    padding: 0.85rem 1.25rem 1rem;
+    padding: 0.85rem 1rem 1rem;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.45rem;
     border-top: 1px solid var(--border);
     margin-top: auto;
     background: transparent;
 }
 .tc-footer .btn {
     flex: 1;
-    padding: 0.55rem 0.9rem;
-    font-size: 0.84rem;
+    min-width: 0;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.82rem;
     font-weight: 700;
     justify-content: center;
     border-radius: 9px;
+    white-space: nowrap;
 }
+.tc-footer .btn-pdf-hub {
+    flex: 0 0 auto;
+    padding: 0.55rem 0.75rem;
+}
+.tc-footer .btn-icon-action,
 .tc-footer .btn-danger-ghost {
     flex: 0 0 38px;
     height: 38px;
@@ -411,17 +418,24 @@ small, .hint { font-size: 0.78rem; color: var(--warning); font-style: italic; }
     align-items: center;
     justify-content: center;
     border-radius: 9px;
-    border: 1px solid transparent;
-    background: var(--surface-2);
+    border: 1px solid var(--border);
+    background: var(--input-bg);
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 1.05rem;
     transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.tc-footer .btn-icon-action:hover {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--primary);
+    border-color: rgba(37, 99, 235, 0.35);
+    transform: scale(1.05);
 }
 .tc-footer .btn-danger-ghost:hover {
     background: rgba(239, 68, 68, 0.12);
     color: var(--danger);
-    border-color: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.35);
     transform: scale(1.05);
 }
 

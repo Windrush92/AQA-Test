@@ -435,10 +435,10 @@ function renderHub(fetchCloud = true) {
                 ${isDraft 
                     ? `<button class="btn btn-primary" onclick="continueTest('${test.id}')">▶ Continuar Testeo</button>`
                     : `<button class="btn btn-outline" onclick="viewReportHub('${test.id}')">📄 Ver Informe</button>
-                       <button class="btn btn-secondary" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>
-                       <button class="btn btn-outline" onclick="reopenTest('${test.id}')" title="Reabrir testeo (Requiere Admin)">🔓 Reabrir</button>`
+                       <button class="btn btn-secondary btn-pdf-hub" onclick="generatePdfForTest('${test.id}')">🖨️ PDF</button>
+                       <button class="btn-icon-action" onclick="reopenTest('${test.id}')" title="Reabrir caso" aria-label="Reabrir caso">🔓</button>`
                 }
-                <button class="btn-danger-ghost" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)">🗑️</button>
+                <button class="btn-danger-ghost" onclick="confirmDelete('${test.id}')" title="Eliminar (Requiere Admin)" aria-label="Eliminar (Requiere Admin)">🗑️</button>
             </div>
         </div>
         `;
